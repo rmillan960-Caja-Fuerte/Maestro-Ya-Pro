@@ -27,7 +27,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Logo } from '../logo';
 import { Button } from '../ui/button';
-import { PERMISSIONS } from '@/lib/permissions';
+import { PERMISSIONS, ROLES } from '@/lib/permissions';
 
 const navItems = [
   { href: '/', icon: LayoutGrid, label: 'Dashboard', requiredPermission: null },
@@ -42,7 +42,7 @@ export default function AppSidebar({ isMobile = false, userRole }: { isMobile?: 
   const pathname = usePathname();
   
   // This is a simple permission check. In a real app, you'd get this from the user's session.
-  const userPermissions = (userRole && PERMISSIONS.ROLES[userRole as keyof typeof PERMISSIONS.ROLES]?.permissions) || [];
+  const userPermissions = (userRole && ROLES[userRole as keyof typeof ROLES]?.permissions) || [];
 
   const visibleNavItems = navItems.filter(item => {
     if (item.href === '/users') {
