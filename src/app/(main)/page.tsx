@@ -20,7 +20,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import {
   DollarSign,
-  Users,
   CreditCard,
   Activity,
   ArrowUpRight,
@@ -37,7 +36,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from 'rechar
 import { Button } from '@/components/ui/button';
 import type { ChartConfig } from '@/components/ui/chart';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, where, Timestamp, Query } from 'firebase/firestore';
+import { collection, query, orderBy, where, Timestamp } from 'firebase/firestore';
 import { type WorkOrder } from './work-orders/data/schema';
 import { type Client } from './clients/data/schema';
 import { specialties } from './masters/data/schema';
@@ -67,7 +66,7 @@ export default function DashboardPage() {
 
   // Queries - Memoized and dependent on user.uid
   const workOrdersQuery = useMemoFirebase(() => 
-    !user?.uid || !firestore
+    !firestore || !user?.uid
       ? null
       : query(
           collection(firestore, 'work-orders'), 
@@ -78,7 +77,7 @@ export default function DashboardPage() {
   );
   
   const clientsQuery = useMemoFirebase(() => 
-    !user?.uid || !firestore
+    !firestore || !user?.uid
       ? null
       : query(
           collection(firestore, 'clients'), 
@@ -364,3 +363,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
