@@ -179,6 +179,71 @@
         "url": { "type": "string", "format": "uri", "description": "The URL where the document is stored." }
       },
       "required": ["name", "url"]
+    },
+    "WorkOrder": {
+      "title": "Work Order",
+      "type": "object",
+      "description": "Represents a complete work order, from quote to payment.",
+      "properties": {
+        "orderNumber": { "type": "string", "description": "Unique, human-readable identifier for the order." },
+        "clientId": { "type": "string", "description": "Reference to the client." },
+        "masterId": { "type": "string", "description": "Reference to the assigned master." },
+        "addressId": { "type": "string", "description": "Reference to the client's address for the service." },
+        "status": { "type": "string", "description": "Current status of the work order (e.g., draft, quote_sent, approved, scheduled, in_progress, completed, paid, cancelled)." },
+        "title": { "type": "string", "description": "A brief title for the work order." },
+        "description": { "type": "string", "description": "Detailed description of the work to be done." },
+        "items": { "type": "array", "items": { "$ref": "#/entities/WorkOrderItem" } },
+        "subtotal": { "type": "number" },
+        "tax": { "type": "number" },
+        "total": { "type": "number" },
+        "currency": { "type": "string", "default": "USD" },
+        "payments": { "type": "array", "items": { "$ref": "#/entities/WorkOrderPayment" } },
+        "balance": { "type": "number", "description": "Remaining balance to be paid." },
+        "evidence": { "type": "array", "items": { "$ref": "#/entities/WorkOrderEvidence" } },
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "completionDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string", "description": "User ID of the creator." }
+      },
+      "required": ["orderNumber", "clientId", "status", "title", "total"]
+    },
+    "WorkOrderItem": {
+      "title": "Work Order Item",
+      "type": "object",
+      "description": "Represents a single line item in a work order's quote.",
+      "properties": {
+        "description": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unitPrice": { "type": "number" },
+        "total": { "type": "number" }
+      },
+      "required": ["description", "quantity", "unitPrice", "total"]
+    },
+    "WorkOrderPayment": {
+      "title": "Work Order Payment",
+      "type": "object",
+      "description": "Records a payment made towards a work order.",
+      "properties": {
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "method": { "type": "string", "description": "e.g., cash, credit_card, bank_transfer" },
+        "reference": { "type": "string", "description": "Transaction ID or reference number." }
+      },
+      "required": ["amount", "date", "method"]
+    },
+    "WorkOrderEvidence": {
+      "title": "Work Order Evidence",
+      "type": "object",
+      "description": "Represents a piece of evidence (usually a photo) for a work order.",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "description": { "type": "string" },
+        "stage": { "type": "string", "description": "before, during, after" },
+        "uploadedAt": { "type": "string", "format": "date-time" },
+        "uploadedBy": { "type": "string", "description": "User or Master ID." }
+      },
+      "required": ["url", "stage"]
     }
   },
   "auth": {
@@ -199,6 +264,12 @@
     "/masters/{masterId}": {
       "schema": { "$ref": "#/entities/Master" },
       "description": "Stores information about masters (professionals)."
+    },
+    "/work-orders/{workOrderId}": {
+      "schema": { "$ref": "#/entities/WorkOrder" },
+      "description": "Main collection for all work orders."
     }
   }
 }
+
+    
