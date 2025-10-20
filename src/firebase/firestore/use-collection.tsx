@@ -8,9 +8,13 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
+  collection,
+  query,
+  where,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useFirestore } from '@/firebase/provider';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -111,4 +115,27 @@ export function useCollection<T = any>(
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }
   return { data, isLoading, error };
+}
+
+/**
+ * Hook para consultas con filtros del usuario
+ * @template T 
+ * @param {string} collectionName 
+ * @param {string | undefined} userId 
+ * @returns {UseCollectionResult<T>}
+ */
+export function useUserCollection<T>(
+  collectionName: string,
+  userId: string | undefined
+) {
+  const firestore = useFirestore();
+  
+  const q = userId && firestore
+    ? query(
+        collection(firestore, collectionName),
+        where('ownerId', '==', userId)
+      )
+    : null;
+
+  return useCollection<T>(q);
 }
