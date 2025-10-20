@@ -65,24 +65,24 @@ export default function DashboardPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
 
   // Queries - Memoized and dependent on user.uid
-  const workOrdersQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid
-      ? null
-      : query(
-          collection(firestore, 'work-orders'), 
-          where('ownerId', '==', user.uid), 
-          orderBy('createdAt', 'desc')
-        ),
+  const workOrdersQuery = useMemoFirebase(() => {
+      if (!firestore || !user?.uid) return null;
+      return query(
+        collection(firestore, 'work-orders'),
+        where('ownerId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+      );
+    },
     [firestore, user?.uid]
   );
   
-  const clientsQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid
-      ? null
-      : query(
-          collection(firestore, 'clients'), 
-          where('ownerId', '==', user.uid)
-        ),
+  const clientsQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+      return query(
+        collection(firestore, 'clients'), 
+        where('ownerId', '==', user.uid)
+      );
+    },
     [firestore, user?.uid]
   );
 
@@ -94,7 +94,7 @@ export default function DashboardPage() {
 
   // Memoized data processing
   const dashboardData = React.useMemo(() => {
-    if (isLoading || !workOrders || !clients) return {
+    if (!workOrders || !clients) return {
         kpi: { monthlyRevenue: 0, activeOrders: 0, conversionRate: 0, averageTicket: 0 },
         recentOrders: [],
         revenueChart: [],
@@ -179,7 +179,7 @@ export default function DashboardPage() {
         ordersByCategory,
     };
 
-  }, [isLoading, workOrders, clients]);
+  }, [workOrders, clients]);
 
   const kpiData = [
     { title: 'Ingresos del Mes', value: formatCurrency(dashboardData.kpi.monthlyRevenue), icon: DollarSign, key: 'monthlyRevenue' },
