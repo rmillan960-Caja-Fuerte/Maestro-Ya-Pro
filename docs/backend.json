@@ -189,7 +189,7 @@
         "clientId": { "type": "string", "description": "Reference to the client." },
         "masterId": { "type": "string", "description": "Reference to the assigned master." },
         "addressId": { "type": "string", "description": "Reference to the client's address for the service." },
-        "status": { "type": "string", "description": "Current status of the work order (e.g., draft, quote_sent, approved, scheduled, in_progress, completed, paid, cancelled)." },
+        "status": { "type": "string", "description": "Current status of the work order (e.g., draft, quote_sent, approved, scheduled, in_progress, completed, paid, cancelled, warranty_claim)." },
         "title": { "type": "string", "description": "A brief title for the work order." },
         "description": { "type": "string", "description": "Detailed description of the work to be done." },
         "items": { "type": "array", "items": { "$ref": "#/entities/WorkOrderItem" } },
@@ -201,7 +201,9 @@
         "balance": { "type": "number", "description": "Remaining balance to be paid." },
         "evidence": { "type": "array", "items": { "$ref": "#/entities/WorkOrderEvidence" } },
         "scheduledDate": { "type": "string", "format": "date-time" },
-        "completionDate": { "type": "string", "format": "date-time" },
+        "completionDate": { "type": "string", "format": "date-time", "description": "The date when the work was officially completed." },
+        "warrantyEndDate": { "type": "string", "format": "date-time", "description": "The date when the warranty for this work expires." },
+        "relatedOrderId": { "type": "string", "description": "If this is a follow-up or warranty work, this links to the original work order ID." },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
         "createdBy": { "type": "string", "description": "User ID of the creator." }
@@ -271,5 +273,3 @@
     }
   }
 }
-
-    

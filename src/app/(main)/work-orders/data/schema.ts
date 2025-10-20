@@ -1,6 +1,6 @@
 
 import { z } from "zod"
-import { Circle, Clock, FileWarning, Pencil, CheckCircle2, Truck, DollarSign, XCircle } from "lucide-react"
+import { Circle, Clock, FileWarning, Pencil, CheckCircle2, Truck, DollarSign, XCircle, ShieldAlert, Wrench } from "lucide-react"
 import { Timestamp } from "firebase/firestore"
 
 export const workOrderItemSchema = z.object({
@@ -36,6 +36,8 @@ export const workOrderSchema = z.object({
       "completed",
       "paid",
       "cancelled",
+      "warranty_claim",
+      "warranty_service",
     ]),
   title: z.string().min(1, "El título es obligatorio."),
   description: z.string().optional(),
@@ -56,6 +58,7 @@ export const workOrderSchema = z.object({
   scheduledDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
   completionDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
   warrantyEndDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
+  relatedOrderId: z.string().optional(),
 })
 
 export type WorkOrder = z.infer<typeof workOrderSchema>
@@ -119,5 +122,19 @@ export const statuses = [
     icon: XCircle,
     variant: "destructive",
     color: "",
+  },
+  {
+    value: "warranty_claim",
+    label: "Reclamo Garantía",
+    icon: ShieldAlert,
+    variant: "default",
+    color: "bg-orange-500",
+  },
+  {
+    value: "warranty_service",
+    label: "Servicio Garantía",
+    icon: Wrench,
+    variant: "default",
+    color: "bg-indigo-500",
   },
 ]
