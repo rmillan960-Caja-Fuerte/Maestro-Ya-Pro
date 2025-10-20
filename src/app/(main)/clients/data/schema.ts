@@ -1,6 +1,6 @@
 
 import { z } from "zod"
-import { User, Building } from "lucide-react"
+import { User, Building, CircleDot, Ban, CheckCircle2 } from "lucide-react"
 
 // We're keeping a simple non-relational schema here.
 // IRL, you will have a schema for your data models.
@@ -33,16 +33,19 @@ export type Client = z.infer<typeof clientSchema>
 
 export const statuses = [
   {
+    value: "pending",
+    label: "Pendiente",
+    icon: CircleDot,
+  },
+  {
     value: "active",
     label: "Activo",
+    icon: CheckCircle2,
   },
   {
     value: "inactive",
     label: "Inactivo",
-  },
-  {
-    value: "pending",
-    label: "Pendiente",
+    icon: Ban,
   },
 ]
 

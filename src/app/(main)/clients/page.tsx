@@ -1,13 +1,13 @@
-
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, doc, CollectionReference } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, CollectionReference } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { LayoutGrid, List } from 'lucide-react';
 
 import { columns } from './components/client-columns';
 import { ClientTable } from './components/client-table';
-import { type Client } from './data/schema';
+import { type Client, clientSchema } from './data/schema';
 import {
   Card,
   CardContent,
@@ -17,11 +17,16 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CountryFilter } from '@/components/country-filter';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ClientKanbanView } from './components/client-kanban-view';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ClientsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
+  const { toast } = useToast();
   const [selectedCountry, setSelectedCountry] = React.useState<string | 'all'>('all');
+  const [view, setView] = React.useState('table');
   
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -33,7 +38,7 @@ export default function ClientsPage() {
   const clientsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
     
-    let q = collection(firestore, 'clients') as CollectionReference | query;
+    let q: CollectionReference | query = collection(firestore, 'clients');
 
     if (userProfile.role === 'OWNER') {
       if (selectedCountry !== 'all') {
@@ -46,25 +51,53 @@ export default function ClientsPage() {
     return q;
   }, [firestore, user?.uid, userProfile, selectedCountry]);
 
-  const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery, !!userProfile);
+  const { data: clients, isLoading: isDataLoading, error } = useCollection<Client>(clientsQuery, !!userProfile);
+
+  const handleStatusChange = async (clientId: string, newStatus: 'active' | 'inactive' | 'pending') => {
+    try {
+      const clientRef = doc(firestore, "clients", clientId);
+      await setDoc(clientRef, { status: newStatus }, { merge: true });
+      toast({
+        title: "Estado actualizado",
+        description: "El estado del cliente ha sido cambiado.",
+      })
+    } catch (error) {
+       console.error("Error updating client status:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar el estado del cliente.",
+      });
+    }
+  };
 
   const isLoading = isAuthLoading || isProfileLoading || (user && isDataLoading);
 
   return (
     <Card>
-      <CardHeader className="sm:flex-row sm:items-center sm:justify-between">
+      <CardHeader className="flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle>Clientes</CardTitle>
           <CardDescription>
             Administra los perfiles y la información de tus clientes.
           </CardDescription>
         </div>
-         {userProfile?.role === 'OWNER' && (
-          <CountryFilter
-            selectedCountry={selectedCountry}
-            onCountryChange={setSelectedCountry}
-          />
-        )}
+        <div className="flex items-center gap-2">
+            {userProfile?.role === 'OWNER' && (
+                <CountryFilter
+                    selectedCountry={selectedCountry}
+                    onCountryChange={setSelectedCountry}
+                />
+            )}
+            <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value)} aria-label="View mode">
+                <ToggleGroupItem value="table" aria-label="Table view">
+                    <List className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="kanban" aria-label="Kanban view">
+                    <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+            </ToggleGroup>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -84,8 +117,10 @@ export default function ClientsPage() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : view === 'table' ? (
           <ClientTable columns={columns} data={clients || []} />
+        ) : (
+          <ClientKanbanView clients={clients || []} onStatusChange={handleStatusChange} />
         )}
       </CardContent>
     </Card>
