@@ -31,13 +31,7 @@ const navItems = [
   { href: '/clients', icon: UsersRound, label: 'Clientes' },
   { href: '/masters', icon: Construction, label: 'Maestros' },
   { href: '/work-orders', icon: FileText, label: 'Órdenes' },
-  { href: '/finances', icon: Landmark, label: 'Finanzas' },
-  { href: '/analytics', icon: AreaChart, label: 'Analytics' },
-  { href: '/schedule', icon: CalendarDays, label: 'Agenda' },
-  { href: '/communications', icon: MessageSquare, label: 'Comunicación' },
-  { href: '/inventory', icon: Box, label: 'Inventario' },
   { href: '/ai', icon: Sparkles, label: 'Asistente IA' },
-  { href: '/reports', icon: FilePieChart, label: 'Reportes' },
 ];
 
 export default function AppSidebar({ isMobile = false }: { isMobile?: boolean }) {
