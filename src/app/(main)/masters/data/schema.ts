@@ -15,6 +15,7 @@ export const masterBaseSchema = z.object({
   phone: z.string().min(1, { message: "El teléfono es obligatorio." }),
   specialties: z.array(z.string()).min(1, { message: "Selecciona al menos una especialidad." }),
   coverageZones: z.array(z.string()).min(1, { message: "Selecciona al menos una zona de cobertura." }),
+  rating: z.number().optional(),
   status: z.enum(["active", "inactive", "pending_verification"]),
   documents: z.array(documentSchema).optional(),
 });

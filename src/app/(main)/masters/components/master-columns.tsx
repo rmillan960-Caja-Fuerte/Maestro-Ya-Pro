@@ -66,10 +66,31 @@ export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
     ),
     cell: ({ row }) => {
         const specialties = row.getValue("specialties") as string[];
-        if (!specialties) return null;
+        if (!specialties || specialties.length === 0) return null;
         return (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 max-w-xs">
                 {specialties.map(specialty => <Badge key={specialty} variant="secondary">{specialty}</Badge>)}
+            </div>
+        )
+    }
+  },
+  {
+    accessorKey: "coverageZones",
+    header: ({ column }) => (
+        <MasterTableColumnHeader column={column} title="Zonas de Cobertura" />
+    ),
+    cell: ({ row }) => {
+        const zones = row.getValue("coverageZones") as string[];
+        if (!zones || zones.length === 0) return <div className="text-muted-foreground">Sin especificar</div>;
+        
+        const zoneLabels = zones.map(zoneValue => {
+            const zone = quitoZones.find(z => z.value === zoneValue);
+            return zone ? zone.label : zoneValue;
+        });
+
+        return (
+            <div className="flex flex-wrap gap-1 max-w-xs">
+                {zoneLabels.map(label => <Badge key={label} variant="outline">{label}</Badge>)}
             </div>
         )
     }
@@ -81,7 +102,7 @@ export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
     ),
     cell: ({ row }) => {
       const rating = row.getValue("rating") as number | undefined;
-      if (!rating) return <div className="text-muted-foreground">-</div>;
+      if (!rating) return <div className="text-muted-foreground text-center">-</div>;
       return (
         <div className="flex items-center gap-1">
           <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
@@ -115,5 +136,3 @@ export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
     cell: ({ row, table }) => <MasterTableRowActions row={row} table={table} />,
   },
 ]
-
-    
