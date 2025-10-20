@@ -67,16 +67,23 @@ export default function DashboardPage() {
 
   // Queries - Memoized and dependent on user.uid
   const workOrdersQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid
+    !user?.uid || !firestore
       ? null
-      : query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')),
+      : query(
+          collection(firestore, 'work-orders'), 
+          where('ownerId', '==', user.uid), 
+          orderBy('createdAt', 'desc')
+        ),
     [firestore, user?.uid]
   );
   
   const clientsQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid
+    !user?.uid || !firestore
       ? null
-      : query(collection(firestore, 'clients'), where('ownerId', '==', user.uid)),
+      : query(
+          collection(firestore, 'clients'), 
+          where('ownerId', '==', user.uid)
+        ),
     [firestore, user?.uid]
   );
 
@@ -88,7 +95,7 @@ export default function DashboardPage() {
 
   // Memoized data processing
   const dashboardData = React.useMemo(() => {
-    if (isLoading || !workOrders) return {
+    if (!workOrders || !clients) return {
         kpi: { monthlyRevenue: 0, activeOrders: 0, conversionRate: 0, averageTicket: 0 },
         recentOrders: [],
         revenueChart: [],
@@ -119,7 +126,7 @@ export default function DashboardPage() {
     const totalQuotesCount = workOrders.filter(wo => wo.status !== 'draft').length;
     const conversionRate = totalQuotesCount > 0 ? (approvedQuotesCount / totalQuotesCount) * 100 : 0;
 
-    const clientsMap = new Map(clients?.map(c => [c.id, c.type === 'business' ? c.businessName : `${c.firstName} ${c.lastName}`]));
+    const clientsMap = new Map(clients.map(c => [c.id, c.type === 'business' ? c.businessName : `${c.firstName} ${c.lastName}`]));
     const recentOrders = workOrders.slice(0, 5).map(wo => ({
       ...wo,
       clientName: clientsMap.get(wo.clientId) || 'Cliente Desconocido',
@@ -173,7 +180,7 @@ export default function DashboardPage() {
         ordersByCategory,
     };
 
-  }, [isLoading, workOrders, clients]);
+  }, [workOrders, clients]);
 
   const kpiData = [
     { title: 'Ingresos del Mes', value: formatCurrency(dashboardData.kpi.monthlyRevenue), icon: DollarSign, key: 'monthlyRevenue' },
