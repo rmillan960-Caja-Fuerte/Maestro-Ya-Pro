@@ -1,68 +1,23 @@
 {
   "entities": {
     "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
       "description": "Represents a user within the Maestro-Ya Pro application, combining profile, preferences, and metadata.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the user entity."
-        },
-        "uid": {
-          "type": "string",
-          "description": "Firebase UID of the user, linked to the authentication system."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the user.",
-          "format": "email"
-        },
-        "role": {
-          "type": "string",
-          "description": "Role of the user within the application (e.g., super_admin, admin, operator, viewer)."
-        },
-        "permissions": {
-          "type": "array",
-          "description": "List of permissions granted to the user.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "firstName": {
-          "type": "string",
-          "description": "First name of the user."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Last name of the user."
-        },
-        "phone": {
-          "type": "string",
-          "description": "Phone number of the user."
-        },
-        "photoUrl": {
-          "type": "string",
-          "description": "URL of the user's profile photo.",
-          "format": "uri"
-        },
-        "department": {
-          "type": "string",
-          "description": "Department the user belongs to."
-        },
-        "position": {
-          "type": "string",
-          "description": "Job position of the user."
-        },
-        "theme": {
-          "type": "string",
-          "description": "Preferred theme of the application (e.g., light, dark, auto)."
-        },
-        "language": {
-          "type": "string",
-          "description": "Preferred language of the application (e.g., es, en)."
-        },
+        "id": { "type": "string", "description": "Unique identifier for the user entity." },
+        "uid": { "type": "string", "description": "Firebase UID of the user, linked to the authentication system." },
+        "email": { "type": "string", "description": "Email address of the user.", "format": "email" },
+        "role": { "type": "string", "description": "Role of the user within the application (e.g., super_admin, admin, operator, viewer)." },
+        "permissions": { "type": "array", "description": "List of permissions granted to the user.", "items": { "type": "string" } },
+        "firstName": { "type": "string", "description": "First name of the user." },
+        "lastName": { "type": "string", "description": "Last name of the user." },
+        "phone": { "type": "string", "description": "Phone number of the user." },
+        "photoUrl": { "type": "string", "description": "URL of the user's profile photo.", "format": "uri" },
+        "department": { "type": "string", "description": "Department the user belongs to." },
+        "position": { "type": "string", "description": "Job position of the user." },
+        "theme": { "type": "string", "description": "Preferred theme of the application (e.g., light, dark, auto)." },
+        "language": { "type": "string", "description": "Preferred language of the application (e.g., es, en)." },
         "notifications": {
           "type": "object",
           "properties": {
@@ -72,111 +27,47 @@
             "whatsapp": { "type": "boolean" }
           }
         },
-        "dashboard": {
+        "dashboardSettings": {
           "type": "object",
           "properties": {
             "defaultView": { "type": "string" },
             "favoriteWidgets": { "type": "array", "items": { "type": "string" } }
           }
         },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user account was created.",
-          "format": "date-time"
-        },
-        "lastLogin": {
-          "type": "string",
-          "description": "Timestamp indicating the last time the user logged in.",
-          "format": "date-time"
-        },
-        "loginCount": {
-          "type": "number",
-          "description": "Number of times the user has logged in."
-        },
-        "ipAddress": {
-          "type": "string",
-          "description": "IP address of the user's last login."
-        },
-        "deviceInfo": {
-          "type": "string",
-          "description": "Information about the device used for the user's last login."
-        },
-        "isActive": {
-          "type": "boolean",
-          "description": "Indicates whether the user account is active."
-        },
-        "twoFactorEnabled": {
-          "type": "boolean",
-          "description": "Indicates whether two-factor authentication is enabled for the user."
-        }
+        "createdAt": { "type": "string", "description": "Timestamp indicating when the user account was created.", "format": "date-time" },
+        "lastLogin": { "type": "string", "description": "Timestamp indicating the last time the user logged in.", "format": "date-time" },
+        "loginCount": { "type": "number", "description": "Number of times the user has logged in." },
+        "ipAddress": { "type": "string", "description": "IP address of the user's last login." },
+        "deviceInfo": { "type": "string", "description": "Information about the device used for the user's last login." },
+        "isActive": { "type": "boolean", "description": "Indicates whether the user account is active." },
+        "twoFactorEnabled": { "type": "boolean", "description": "Indicates whether two-factor authentication is enabled for the user." }
       },
-      "required": ["id", "uid", "email", "role"]
+      "required": ["id", "uid", "email", "role", "firstName", "lastName", "isActive"]
     },
     "Client": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Client",
       "type": "object",
       "description": "Represents a client within the Maestro-Ya Pro application.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the client entity."
-        },
-        "ownerId": {
-          "type": "string",
-          "description": "Reference to the User entity who created the client."
-        },
-        "type": {
-          "type": "string",
-          "description": "Type of client (e.g., individual, business)."
-        },
-        "firstName": {
-          "type": "string"
-        },
-        "lastName": {
-          "type": "string"
-        },
-        "businessName": {
-          "type": "string"
-        },
-        "idType": {
-          "type": "string"
-        },
-        "idNumber": {
-          "type": "string"
-        },
-        "taxId": {
-          "type": "string"
-        },
-        "photoUrl": {
-          "type": "string",
-          "format": "uri"
-        },
-        "primaryPhone": {
-          "type": "string"
-        },
-        "secondaryPhone": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string",
-          "format": "email"
-        },
-        "whatsapp": {
-          "type": "string"
-        },
-        "preferredChannel": {
-          "type": "string"
-        },
-        "addresses": {
-          "type": "array",
-          "items": {
-            "$ref": "#/entities/ClientAddress"
-          }
-        },
+        "id": { "type": "string", "description": "Unique identifier for the client entity." },
+        "ownerId": { "type": "string", "description": "Reference to the User entity who created the client." },
+        "type": { "type": "string", "description": "Type of client (e.g., individual, business)." },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "businessName": { "type": "string" },
+        "idType": { "type": "string" },
+        "idNumber": { "type": "string" },
+        "taxId": { "type": "string" },
+        "photoUrl": { "type": "string", "format": "uri" },
+        "primaryPhone": { "type": "string" },
+        "secondaryPhone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "whatsapp": { "type": "string" },
+        "preferredChannel": { "type": "string" },
+        "addresses": { "type": "array", "items": { "$ref": "#/entities/ClientAddress" } },
         "creditLimit": { "type": "number" },
         "paymentTerms": { "type": "number" },
-        "preferredPaymentMethod": { "type": "array", "items": { "type": "string" } },
+        "preferredPaymentMethods": { "type": "array", "items": { "type": "string" } },
         "taxExempt": { "type": "boolean" },
         "discount": { "type": "number" },
         "accountBalance": { "type": "number" },
@@ -210,10 +101,9 @@
         "isDeleted": { "type": "boolean" },
         "deletedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "ownerId", "type"]
+      "required": ["id", "ownerId", "type", "email"]
     },
     "ClientAddress": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ClientAddress",
       "type": "object",
       "description": "Represents an address associated with a client.",
@@ -236,7 +126,6 @@
       "required": ["id", "street", "city", "country"]
     },
     "Master": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Master",
       "type": "object",
       "description": "Represents a master (professional) within the Maestro-Ya Pro application.",
@@ -250,13 +139,31 @@
         "photoUrl": { "type": "string", "format": "uri" },
         "specialties": { "type": "array", "items": { "type": "string" } },
         "rating": { "type": "number" },
-        "status": { "type": "string" },
-        "internalNotes": {
-          "type": "string",
-          "description": "Internal notes about the master, not visible to the client."
-        }
+        "status": { "type": "string", "description": "e.g., active, inactive, pending_verification" },
+        "availability": {
+            "type": "object",
+            "properties": {
+                "monday": { "type": "string" },
+                "tuesday": { "type": "string" },
+                "wednesday": { "type": "string" },
+                "thursday": { "type": "string" },
+                "friday": { "type": "string" },
+                "saturday": { "type": "string" },
+                "sunday": { "type": "string" }
+            }
+        },
+        "bankInfo": {
+            "type": "object",
+            "properties": {
+                "bankName": { "type": "string" },
+                "accountNumber": { "type": "string" },
+                "accountType": { "type": "string" },
+                "accountHolder": { "type": "string" }
+            }
+        },
+        "internalNotes": { "type": "string", "description": "Internal notes about the master, not visible to the client." }
       },
-       "required": ["id", "ownerId", "firstName", "lastName", "email"]
+       "required": ["id", "ownerId", "firstName", "lastName", "email", "status"]
     }
   },
   "auth": {
