@@ -94,7 +94,7 @@ export default function DashboardPage() {
 
   // Memoized data processing
   const dashboardData = React.useMemo(() => {
-    if (!workOrders || !clients) return {
+    if (isLoading || !workOrders || !clients) return {
         kpi: { monthlyRevenue: 0, activeOrders: 0, conversionRate: 0, averageTicket: 0 },
         recentOrders: [],
         revenueChart: [],
@@ -179,7 +179,7 @@ export default function DashboardPage() {
         ordersByCategory,
     };
 
-  }, [workOrders, clients]);
+  }, [isLoading, workOrders, clients]);
 
   const kpiData = [
     { title: 'Ingresos del Mes', value: formatCurrency(dashboardData.kpi.monthlyRevenue), icon: DollarSign, key: 'monthlyRevenue' },
@@ -363,5 +363,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
