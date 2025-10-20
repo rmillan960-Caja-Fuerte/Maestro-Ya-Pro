@@ -137,6 +137,13 @@
         "specialties": { "type": "array", "items": { "type": "string" } },
         "rating": { "type": "number" },
         "status": { "type": "string", "description": "e.g., active, inactive, pending_verification" },
+        "documents": {
+          "type": "array",
+          "description": "A list of documents associated with the master.",
+          "items": {
+            "$ref": "#/entities/MasterDocument"
+          }
+        },
         "availability": {
             "type": "object",
             "properties": {
@@ -161,6 +168,16 @@
         "internalNotes": { "type": "string", "description": "Internal notes about the master, not visible to the client." }
       },
        "required": ["ownerId", "firstName", "lastName", "email", "status"]
+    },
+    "MasterDocument": {
+      "title": "MasterDocument",
+      "type": "object",
+      "description": "Represents a document uploaded by a master.",
+      "properties": {
+        "name": { "type": "string", "description": "The user-defined name of the document (e.g., 'Cédula Profesional')." },
+        "url": { "type": "string", "format": "uri", "description": "The URL where the document is stored." }
+      },
+      "required": ["name", "url"]
     }
   },
   "auth": {

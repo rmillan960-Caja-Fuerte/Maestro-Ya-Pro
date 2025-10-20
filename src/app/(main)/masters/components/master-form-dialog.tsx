@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -31,9 +31,10 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { masterBaseSchema, statuses, specialties } from '../data/schema';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, FilePlus, Trash2, Link as LinkIcon } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 const formSchema = masterBaseSchema.omit({ id: true });
 type FormValues = z.infer<typeof formSchema>;
@@ -59,7 +60,13 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
       phone: '',
       specialties: [],
       status: 'pending_verification',
+      documents: [],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "documents",
   });
 
   React.useEffect(() => {
@@ -75,6 +82,7 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
           phone: '',
           specialties: [],
           status: 'pending_verification',
+          documents: [],
         });
       }
     }
@@ -90,7 +98,7 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{master ? 'Editar Maestro' : 'Añadir Maestro'}</DialogTitle>
           <DialogDescription>
@@ -98,7 +106,7 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -222,8 +230,68 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
                 </FormItem>
               )}
             />
+
+            <Separator />
+
+            <div>
+              <FormLabel>Documentos</FormLabel>
+              <div className="space-y-4 mt-2">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="flex items-start gap-2">
+                     <div className="grid grid-cols-2 gap-2 flex-1">
+                        <FormField
+                            control={form.control}
+                            name={`documents.${index}.name`}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <Input placeholder="Ej: Cédula profesional" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name={`documents.${index}.url`}
+                            render={({ field }) => (
+                                <FormItem>
+                                     <div className="relative">
+                                        <LinkIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <FormControl>
+                                            <Input placeholder="https://..." {...field} className="pl-8"/>
+                                        </FormControl>
+                                     </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => remove(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => append({ name: '', url: '' })}
+                >
+                  <FilePlus className="mr-2 h-4 w-4" />
+                  Añadir Documento
+                </Button>
+              </div>
+            </div>
             
-            <DialogFooter>
+            <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
                 Cancelar
               </Button>

@@ -1,6 +1,11 @@
 
 import { z } from "zod"
 
+export const documentSchema = z.object({
+  name: z.string().min(1, { message: "El nombre del documento es obligatorio." }),
+  url: z.string().url({ message: "Por favor, introduce una URL válida." }),
+});
+
 export const masterBaseSchema = z.object({
   id: z.string().optional(),
   ownerId: z.string(),
@@ -10,6 +15,7 @@ export const masterBaseSchema = z.object({
   phone: z.string().min(1, { message: "El teléfono es obligatorio." }),
   specialties: z.array(z.string()).min(1, { message: "Selecciona al menos una especialidad." }),
   status: z.enum(["active", "inactive", "pending_verification"]),
+  documents: z.array(documentSchema).optional(),
 });
 
 export const masterSchema = masterBaseSchema;
