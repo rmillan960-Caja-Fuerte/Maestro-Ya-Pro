@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { workOrderSchema, statuses } from '../data/schema';
-import { Loader2, PlusCircle, Trash2, CalendarIcon, Info, DollarSign, Wrench, Image as ImageIcon } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, CalendarIcon, Info, DollarSign, Wrench, ImageIcon } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/utils';
@@ -44,6 +44,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Switch } from '@/components/ui/switch';
 
 const formSchema = workOrderSchema.omit({ 
     id: true, 
@@ -64,6 +65,9 @@ interface WorkOrderFormDialogProps {
   masters: Master[];
 }
 
+const TAX_RATE = 0.16; // 16% IVA
+const MATERIAL_MARKUP_RATE = 0.15; // 15% recargo sobre materiales
+
 export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, clients, masters }: WorkOrderFormDialogProps) {
   const [isSaving, setIsSaving] = React.useState(false);
   
@@ -77,6 +81,8 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
       subtotal: 0,
       tax: 0,
       surcharges: 0,
+      materialsCost: 0,
+      applyTax: false,
       total: 0,
       materialsProvidedBy: 'master',
     }
@@ -89,6 +95,9 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
 
   const items = form.watch('items');
   const surcharges = form.watch('surcharges');
+  const materialsProvidedBy = form.watch('materialsProvidedBy');
+  const materialsCost = form.watch('materialsCost');
+  const applyTax = form.watch('applyTax');
   
   React.useEffect(() => {
     if (isOpen) {
@@ -105,6 +114,8 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             subtotal: 0,
             tax: 0,
             surcharges: 0,
+            materialsCost: 0,
+            applyTax: false,
             total: 0,
             materialsProvidedBy: 'master',
         };
@@ -114,12 +125,20 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
 
   React.useEffect(() => {
     const subtotal = items?.reduce((acc, item) => acc + (item.quantity * item.unitPrice || 0), 0) || 0;
-    const tax = (subtotal + (surcharges || 0)) * 0.16; // Tax calculated on subtotal + surcharges
-    const total = subtotal + (surcharges || 0) + tax;
+    
+    let materialsTotal = 0;
+    if (materialsProvidedBy === 'master' && materialsCost && materialsCost > 0) {
+        materialsTotal = materialsCost * (1 + MATERIAL_MARKUP_RATE);
+    }
+
+    const baseForTax = subtotal + (surcharges || 0) + materialsTotal;
+    const taxAmount = applyTax ? baseForTax * TAX_RATE : 0;
+    const total = baseForTax + taxAmount;
+
     form.setValue('subtotal', subtotal);
-    form.setValue('tax', tax);
+    form.setValue('tax', taxAmount);
     form.setValue('total', total);
-  }, [items, surcharges, form]);
+  }, [items, surcharges, materialsProvidedBy, materialsCost, applyTax, form]);
 
 
   const handleSubmit = async (values: FormValues) => {
@@ -224,7 +243,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                     <TabsContent value="quote" className="mt-0">
                         <div className="space-y-4">
                             <div>
-                                <h3 className="text-lg font-medium mb-2">Ítems de la Cotización</h3>
+                                <h3 className="text-lg font-medium mb-2">Ítems de Servicio</h3>
                                 <div className="space-y-2">
                                     {fields.map((field, index) => (
                                         <div key={field.id} className="grid grid-cols-[1fr_80px_120px_120px_auto] gap-2 items-start">
@@ -278,15 +297,30 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
 
                             <div className="w-full max-w-sm ml-auto space-y-2">
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Subtotal:</span>
+                                    <span className="text-muted-foreground">Subtotal Servicios:</span>
                                     <span>{formatCurrency(form.getValues('subtotal'))}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Recargos:</span>
                                     <span>{formatCurrency(form.getValues('surcharges') || 0)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">IVA (16%):</span>
+                                {materialsProvidedBy === 'master' && (
+                                  <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Materiales (+15%):</span>
+                                      <span>{formatCurrency((materialsCost || 0) * (1 + MATERIAL_MARKUP_RATE))}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between items-center">
+                                    <FormField
+                                        control={form.control}
+                                        name="applyTax"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                <FormLabel className="font-normal text-muted-foreground">Aplicar IVA (16%)</FormLabel>
+                                            </FormItem>
+                                        )}
+                                    />
                                     <span>{formatCurrency(form.getValues('tax'))}</span>
                                 </div>
                                 <Separator />
@@ -377,7 +411,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                         </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="master">Maestro</SelectItem>
+                                            <SelectItem value="master">Maestro (Empresa)</SelectItem>
                                             <SelectItem value="client">Cliente</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -385,6 +419,26 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                     </FormItem>
                                 )}
                             />
+                            {materialsProvidedBy === 'master' && (
+                                <FormField
+                                    control={form.control}
+                                    name="materialsCost"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Costo de Materiales (sin recargo)</FormLabel>
+                                            <FormControl>
+                                                <Input 
+                                                    type="number" 
+                                                    placeholder="0.00" 
+                                                    {...field} 
+                                                    onChange={e => field.onChange(+e.target.value)} 
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
                         </div>
                     </TabsContent>
                     <TabsContent value="evidence" className="mt-0">

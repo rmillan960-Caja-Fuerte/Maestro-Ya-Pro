@@ -17,7 +17,7 @@ export const workOrderSchema = z.object({
   clientName: z.string().optional(),
   masterId: z.string().optional(),
   masterName: z.string().optional(),
-  addressId: z.string().optional(), // Nuevo
+  addressId: z.string().optional(),
   status: z.enum([
       "draft",
       "quote_sent",
@@ -32,16 +32,18 @@ export const workOrderSchema = z.object({
   description: z.string().optional(),
   items: z.array(workOrderItemSchema).optional(),
   subtotal: z.number().default(0),
-  surcharges: z.number().default(0), // Nuevo para recargos
+  surcharges: z.number().default(0),
+  materialsCost: z.number().optional().default(0),
+  applyTax: z.boolean().default(false),
   tax: z.number().default(0),
   total: z.number().default(0),
-  materialsProvidedBy: z.enum(['master', 'client']).default('master'), // Nuevo
-  internalNotes: z.string().optional(), // Nuevo
-  evidence: z.array(z.object({ url: z.string(), stage: z.enum(['before', 'during', 'after'])})).optional(), // Nuevo
+  materialsProvidedBy: z.enum(['master', 'client']).default('master'),
+  internalNotes: z.string().optional(),
+  evidence: z.array(z.object({ url: z.string(), stage: z.enum(['before', 'during', 'after'])})).optional(),
   createdAt: z.union([z.instanceof(Timestamp), z.string()]),
   updatedAt: z.union([z.instanceof(Timestamp), z.string()]).optional(),
   scheduledDate: z.union([z.instanceof(Date), z.string()]).optional(),
-  completionDate: z.union([z.instanceof(Date), z.string()]).optional(), // Nuevo
+  completionDate: z.union([z.instanceof(Date), z.string()]).optional(),
 })
 
 export type WorkOrder = z.infer<typeof workOrderSchema>
