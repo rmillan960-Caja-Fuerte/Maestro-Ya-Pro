@@ -25,3 +25,27 @@ exports.cleanupTempFiles = functions.pubsub
     // Eliminar archivos en /temp mayores a 24h
     // Eliminar archivos huérfanos
   });
+
+// Generar PDF de cotización
+exports.generateQuotePDF = functions.https.onCall(async (data, context) => {
+  // Autenticar usuario
+  // Obtener datos de work order
+  // Generar PDF con puppeteer
+  // Subir a Storage
+  // Retornar URL
+});
+
+// Enviar WhatsApp
+exports.sendWhatsApp = functions.https.onCall(async (data, context) => {
+  // Integración con WhatsApp Business API
+  // Enviar mensaje
+  // Registrar en communications
+});
+
+// Procesar pago con Stripe
+exports.processPayment = functions.https.onCall(async (data, context) => {
+  // Crear payment intent
+  // Procesar pago
+  // Actualizar orden
+  // Enviar recibo
+});
