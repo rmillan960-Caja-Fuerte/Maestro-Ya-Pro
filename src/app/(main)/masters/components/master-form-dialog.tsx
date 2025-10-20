@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { masterBaseSchema, statuses, specialties } from '../data/schema';
+import { masterBaseSchema, statuses, specialties, quitoZones } from '../data/schema';
 import { Loader2, X, FilePlus, Trash2, Link as LinkIcon } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +59,7 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
       email: '',
       phone: '',
       specialties: [],
+      coverageZones: [],
       status: 'pending_verification',
       documents: [],
     },
@@ -81,6 +82,7 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
           email: '',
           phone: '',
           specialties: [],
+          coverageZones: [],
           status: 'pending_verification',
           documents: [],
         });
@@ -95,6 +97,7 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
   };
 
   const currentSpecialties = form.watch('specialties') || [];
+  const currentZones = form.watch('coverageZones') || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -195,6 +198,48 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
                             <Badge key={specValue} variant="secondary">
                                 {specLabel}
                                 <button type="button" className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2" onClick={() => form.setValue('specialties', currentSpecialties.filter(s => s !== specValue))}>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                          )
+                      })}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="coverageZones"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Zonas de Cobertura</FormLabel>
+                  <Select onValueChange={(value) => {
+                      if(value && !currentZones.includes(value)) {
+                          form.setValue('coverageZones', [...currentZones, value])
+                      }
+                  }}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona las zonas que cubre" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {quitoZones.map((zone) => (
+                        <SelectItem key={zone.value} value={zone.value} disabled={currentZones.includes(zone.value)}>
+                          {zone.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                      {currentZones.map(zoneValue => {
+                          const zoneLabel = quitoZones.find(z => z.value === zoneValue)?.label;
+                          return (
+                            <Badge key={zoneValue} variant="secondary">
+                                {zoneLabel}
+                                <button type="button" className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2" onClick={() => form.setValue('coverageZones', currentZones.filter(s => s !== zoneValue))}>
                                     <X className="h-3 w-3" />
                                 </button>
                             </Badge>

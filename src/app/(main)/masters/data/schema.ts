@@ -14,6 +14,7 @@ export const masterBaseSchema = z.object({
   email: z.string().email({ message: "Por favor, introduce un correo válido." }),
   phone: z.string().min(1, { message: "El teléfono es obligatorio." }),
   specialties: z.array(z.string()).min(1, { message: "Selecciona al menos una especialidad." }),
+  coverageZones: z.array(z.string()).min(1, { message: "Selecciona al menos una zona de cobertura." }),
   status: z.enum(["active", "inactive", "pending_verification"]),
   documents: z.array(documentSchema).optional(),
 });
@@ -46,4 +47,15 @@ export const specialties = [
     { value: 'hvac', label: 'HVAC' },
     { value: 'gardening', label: 'Jardinería' },
     { value: 'cleaning', label: 'Limpieza' },
+];
+
+export const quitoZones = [
+    { value: 'norte', label: 'Norte de Quito' },
+    { value: 'centro', label: 'Centro Histórico' },
+    { value: 'sur', label: 'Sur de Quito' },
+    { value: 'cumbaya', label: 'Cumbayá' },
+    { value: 'tumbaco', label: 'Tumbaco' },
+    { value: 'los-chillos', label: 'Valle de los Chillos' },
+    { value: 'calderon', label: 'Calderón' },
+    { value: 'la-concepcion', label: 'La Concepción' },
 ];

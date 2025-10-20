@@ -135,6 +135,7 @@
         "email": { "type": "string", "format": "email" },
         "photoUrl": { "type": "string", "format": "uri" },
         "specialties": { "type": "array", "items": { "type": "string" } },
+        "coverageZones": { "type": "array", "items": { "type": "string" }, "description": "The geographical zones the master covers." },
         "rating": { "type": "number" },
         "status": { "type": "string", "description": "e.g., active, inactive, pending_verification" },
         "documents": {
@@ -167,7 +168,7 @@
         },
         "internalNotes": { "type": "string", "description": "Internal notes about the master, not visible to the client." }
       },
-       "required": ["ownerId", "firstName", "lastName", "email", "status"]
+       "required": ["ownerId", "firstName", "lastName", "email", "status", "coverageZones"]
     },
     "MasterDocument": {
       "title": "MasterDocument",

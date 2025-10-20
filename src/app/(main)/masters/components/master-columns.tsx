@@ -3,7 +3,7 @@
 
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
-import { masterSchema, statuses } from "../data/schema"
+import { masterSchema, statuses, quitoZones } from "../data/schema"
 import { MasterTableColumnHeader } from "./master-table-column-header"
 import { MasterTableRowActions } from "./master-table-row-actions"
 import { Badge } from "@/components/ui/badge"
@@ -64,9 +64,28 @@ export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
     ),
     cell: ({ row }) => {
         const specialties = row.getValue("specialties") as string[];
+        if (!specialties) return null;
         return (
             <div className="flex flex-wrap gap-1">
                 {specialties.map(specialty => <Badge key={specialty} variant="secondary">{specialty}</Badge>)}
+            </div>
+        )
+    }
+  },
+  {
+    accessorKey: "coverageZones",
+    header: ({ column }) => (
+        <MasterTableColumnHeader column={column} title="Zonas de Cobertura" />
+    ),
+    cell: ({ row }) => {
+        const zones = row.getValue("coverageZones") as string[];
+        if (!zones) return null;
+        return (
+            <div className="flex flex-wrap gap-1 max-w-xs">
+                {zones.map(zoneValue => {
+                    const zoneLabel = quitoZones.find(z => z.value === zoneValue)?.label || zoneValue;
+                    return <Badge key={zoneValue} variant="outline">{zoneLabel}</Badge>
+                })}
             </div>
         )
     }
