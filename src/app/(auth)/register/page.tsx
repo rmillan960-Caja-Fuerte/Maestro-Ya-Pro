@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -65,27 +65,36 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 2. Create user profile in Firestore
+      // 2. Create user profile in Firestore, but only if it doesn't exist
       const userRef = doc(firestore, 'users', user.uid);
-      const defaultRole = 'ADMIN'; // Assign a default role
-      const roleInfo = ROLES[defaultRole as keyof typeof ROLES];
+      const userDoc = await getDoc(userRef);
 
-      await setDoc(userRef, {
-        uid: user.uid,
-        email: values.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
-        role: defaultRole,
-        permissions: roleInfo.permissions,
-        createdAt: serverTimestamp(),
-        isActive: true,
-        photoUrl: `https://avatar.vercel.sh/${values.email}.png`
-      });
+      if (!userDoc.exists()) {
+        const defaultRole = 'ADMIN'; // Assign a default role
+        const roleInfo = ROLES[defaultRole as keyof typeof ROLES];
 
-      toast({
-        title: 'Registro exitoso',
-        description: 'Tu cuenta ha sido creada.',
-      });
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: values.email,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          role: defaultRole,
+          permissions: roleInfo.permissions,
+          createdAt: serverTimestamp(),
+          isActive: true,
+          photoUrl: `https://avatar.vercel.sh/${values.email}.png`
+        });
+         toast({
+            title: 'Registro exitoso',
+            description: 'Tu cuenta ha sido creada.',
+          });
+      } else {
+         toast({
+            title: 'Bienvenido de nuevo',
+            description: 'Ya tenías un perfil creado. Iniciando sesión...',
+          });
+      }
+
       router.push('/');
     } catch (error: any) {
       console.error('Error signing up:', error);
