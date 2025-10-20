@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +41,13 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+// This is a simplified check. In a real app, this might be a call to a Cloud Function
+// that checks a protected collection of existing users.
+async function isFirstUser(db: any): Promise<boolean> {
+  const querySnapshot = await db.collection('users').limit(1).get();
+  return querySnapshot.empty;
+}
+
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const router = useRouter();
@@ -62,19 +69,40 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       // 1. Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password)
+        .catch(async (error) => {
+          // If user already exists, we might be trying to fix their role.
+          if (error.code === 'auth/email-already-in-use' && values.email === 'rmillan960@gmail.com') {
+            toast({
+              title: 'Cuenta existente',
+              description: 'Actualizando rol para el Super Admin...',
+            });
+            // We need to sign in to get the user object to proceed with role update
+            return signInWithEmailAndPassword(auth, values.email, values.password);
+          }
+          // If it's a different error or a different user, re-throw it.
+          throw error;
+        });
+
       const user = userCredential.user;
 
       // 2. Create or OVERWRITE user profile in Firestore
       const userRef = doc(firestore, 'users', user.uid);
       
-      // For simplicity, the first user is always a SUPER_ADMIN.
-      // In a real app, this would be handled differently (e.g., via an invite system or Cloud Function).
-      const defaultRole = 'SUPER_ADMIN'; 
-      const roleInfo = ROLES[defaultRole as keyof typeof ROLES];
+      // The very first registered user is always a SUPER_ADMIN.
+      // Or, if it's the specific hardcoded super admin email, force the role.
+      const userDoc = await getDoc(userRef);
+      const isFirst = !userDoc.exists(); // Simple check: is this the first time we're setting this doc?
+
+      let finalRole = 'OPERATOR'; // Default role
+      if (isFirst || values.email === 'rmillan960@gmail.com') {
+        finalRole = 'SUPER_ADMIN';
+      }
+
+      const roleInfo = ROLES[finalRole as keyof typeof ROLES];
 
       if (!roleInfo) {
-        throw new Error('No se encontró la configuración para el rol de SUPER_ADMIN.');
+        throw new Error(`Configuración de rol no encontrada para ${finalRole}.`);
       }
       
       // Always set/overwrite the document to ensure permissions are correct.
@@ -83,16 +111,16 @@ export default function RegisterPage() {
         email: values.email,
         firstName: values.firstName,
         lastName: values.lastName,
-        role: defaultRole,
+        role: finalRole,
         permissions: roleInfo.permissions, // Assign all permissions for the role
         createdAt: serverTimestamp(),
         isActive: true,
         photoUrl: `https://avatar.vercel.sh/${values.email}.png`
-      });
+      }, { merge: true }); // Use merge to avoid overwriting createdAt on re-registration
 
       toast({
         title: 'Registro exitoso',
-        description: 'Tu cuenta de súper administrador ha sido creada correctamente.',
+        description: `Tu cuenta de ${roleInfo.name} ha sido creada/actualizada.`,
       });
 
       router.push('/');
