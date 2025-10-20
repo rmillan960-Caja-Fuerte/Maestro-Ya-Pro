@@ -355,30 +355,37 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                         />
                     </TabsContent>
                     <TabsContent value="quote" className="mt-0 space-y-4">
-                        <div>
+                         <div>
                             <h3 className="text-lg font-medium mb-2">Ítems de Servicio</h3>
+                            <div className="grid grid-cols-[1fr_80px_120px_120px_auto] gap-x-2 items-center mb-1">
+                                <FormLabel>Descripción</FormLabel>
+                                <FormLabel>Cant.</FormLabel>
+                                <FormLabel>P. Unitario</FormLabel>
+                                <FormLabel className="text-right">Total</FormLabel>
+                                <span className="w-8"></span>
+                            </div>
                             <div className="space-y-2">
                                 {fields.map((field, index) => (
-                                    <div key={field.id} className="grid grid-cols-[1fr_80px_120px_120px_auto] gap-2 items-start">
+                                    <div key={field.id} className="grid grid-cols-[1fr_80px_120px_120px_auto] gap-x-2 items-start">
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.description`}
-                                            render={({ field }) => <FormItem><FormControl><Textarea placeholder="Descripción del item" {...field} rows={1} /></FormControl><FormMessage /></FormItem>}
+                                            render={({ field }) => <FormItem className="w-full"><FormControl><Textarea placeholder="Descripción del item" {...field} rows={1} /></FormControl><FormMessage /></FormItem>}
                                         />
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.quantity`}
-                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="Cant." {...field} onChange={e => handleItemChange(index, 'quantity', +e.target.value)} /></FormControl><FormMessage /></FormItem>}
+                                            render={({ field }) => <FormItem><FormControl><Input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="Cant." {...field} onChange={e => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
                                         />
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.unitPrice`}
-                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="P. Unitario" {...field} onChange={e => handleItemChange(index, 'unitPrice', +e.target.value)} /></FormControl><FormMessage /></FormItem>}
+                                            render={({ field }) => <FormItem><FormControl><Input type="text" inputMode="numeric" pattern="[0-9.]*" placeholder="P. Unitario" {...field} onChange={e => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
                                         />
-                                        <div className="flex items-center h-10">
+                                        <div className="flex items-center h-10 justify-end">
                                             <p>{formatCurrency(items?.[index]?.total || 0)}</p>
                                         </div>
-                                        <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                        <Button type="button" variant="ghost" size="icon" className="text-destructive h-10 w-10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
                                 ))}
                             </div>
