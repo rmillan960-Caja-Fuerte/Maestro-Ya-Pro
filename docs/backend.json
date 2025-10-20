@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -5,10 +6,9 @@
       "type": "object",
       "description": "Represents a user within the Maestro-Ya Pro application, combining profile, preferences, and metadata.",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the user entity." },
         "uid": { "type": "string", "description": "Firebase UID of the user, linked to the authentication system." },
         "email": { "type": "string", "description": "Email address of the user.", "format": "email" },
-        "role": { "type": "string", "description": "Role of the user within the application (e.g., super_admin, admin, operator, viewer)." },
+        "role": { "type": "string", "description": "Role of the user within the application (e.g., SUPER_ADMIN, ADMIN, OPERATOR, VIEWER)." },
         "permissions": { "type": "array", "description": "List of permissions granted to the user.", "items": { "type": "string" } },
         "firstName": { "type": "string", "description": "First name of the user." },
         "lastName": { "type": "string", "description": "Last name of the user." },
@@ -42,14 +42,13 @@
         "isActive": { "type": "boolean", "description": "Indicates whether the user account is active." },
         "twoFactorEnabled": { "type": "boolean", "description": "Indicates whether two-factor authentication is enabled for the user." }
       },
-      "required": ["id", "uid", "email", "role", "firstName", "lastName", "isActive"]
+      "required": ["uid", "email", "role", "firstName", "lastName", "isActive"]
     },
     "Client": {
       "title": "Client",
       "type": "object",
       "description": "Represents a client within the Maestro-Ya Pro application.",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the client entity." },
         "ownerId": { "type": "string", "description": "Reference to the User entity who created the client." },
         "type": { "type": "string", "description": "Type of client (e.g., individual, business)." },
         "firstName": { "type": "string" },
@@ -101,14 +100,13 @@
         "isDeleted": { "type": "boolean" },
         "deletedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "ownerId", "type", "email"]
+      "required": ["ownerId", "type", "email"]
     },
     "ClientAddress": {
       "title": "ClientAddress",
       "type": "object",
       "description": "Represents an address associated with a client.",
       "properties": {
-        "id": { "type": "string" },
         "type": { "type": "string" },
         "label": { "type": "string" },
         "street": { "type": "string" },
@@ -123,14 +121,13 @@
         "isPrimary": { "type": "boolean" },
         "instructions": { "type": "string" }
       },
-      "required": ["id", "street", "city", "country"]
+      "required": ["street", "city", "country"]
     },
     "Master": {
       "title": "Master",
       "type": "object",
       "description": "Represents a master (professional) within the Maestro-Ya Pro application.",
       "properties": {
-        "id": { "type": "string" },
         "ownerId": { "type": "string" },
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
@@ -163,7 +160,7 @@
         },
         "internalNotes": { "type": "string", "description": "Internal notes about the master, not visible to the client." }
       },
-       "required": ["id", "ownerId", "firstName", "lastName", "email", "status"]
+       "required": ["ownerId", "firstName", "lastName", "email", "status"]
     }
   },
   "auth": {
