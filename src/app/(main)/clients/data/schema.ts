@@ -4,7 +4,8 @@ import { User, Building } from "lucide-react"
 
 // We're keeping a simple non-relational schema here.
 // IRL, you will have a schema for your data models.
-export const clientSchema = z.object({
+
+export const clientBaseSchema = z.object({
   id: z.string(),
   ownerId: z.string(),
   type: z.enum(["individual", "business"]),
@@ -14,7 +15,9 @@ export const clientSchema = z.object({
   email: z.string().email({ message: "Por favor, introduce un correo válido." }),
   primaryPhone: z.string().min(1, { message: "El teléfono es obligatorio." }),
   status: z.enum(["active", "inactive", "pending"]),
-}).refine(data => {
+});
+
+export const clientSchema = clientBaseSchema.refine(data => {
     if (data.type === 'business') {
         return !!data.businessName;
     }

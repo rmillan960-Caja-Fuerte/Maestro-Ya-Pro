@@ -30,11 +30,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { clientSchema, statuses, types } from '../data/schema';
+import { clientSchema, statuses, types, clientBaseSchema } from '../data/schema';
 import { Loader2 } from 'lucide-react';
 import { useUser } from '@/firebase';
 
-const formSchema = clientSchema.omit({ id: true });
+const formSchema = clientBaseSchema.omit({ id: true });
 type FormValues = z.infer<typeof formSchema>;
 
 interface ClientFormDialogProps {
@@ -49,7 +49,7 @@ export function ClientFormDialog({ isOpen, onOpenChange, onSave, client }: Clien
   const { user } = useUser();
   
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(clientSchema.omit({ id: true })),
     defaultValues: {
       ownerId: '',
       type: 'individual',
