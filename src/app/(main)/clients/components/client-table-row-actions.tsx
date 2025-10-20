@@ -1,7 +1,7 @@
 
 "use client"
 
-import { Row } from "@tanstack/react-table"
+import { Row, Table } from "@tanstack/react-table"
 import { MoreHorizontal } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -20,18 +20,21 @@ import type { z } from "zod"
 
 interface ClientTableRowActionsProps<TData> {
   row: Row<TData>
+  table: Table<TData>
 }
 
 export function ClientTableRowActions<TData>({
   row,
+  table,
 }: ClientTableRowActionsProps<TData>) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { openForm } = (table.options.meta as { openForm: (client?: z.infer<typeof clientSchema>) => void });
+  const client = clientSchema.parse(row.original);
 
   const handleDelete = async () => {
     try {
-      const client = row.original as z.infer<typeof clientSchema>;
+      if (!client.id) throw new Error("ID del cliente no encontrado");
       await deleteDoc(doc(firestore, "clients", client.id));
       toast({
         title: "Cliente eliminado",
@@ -59,7 +62,7 @@ export function ClientTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem onClick={() => openForm(row.original as z.infer<typeof clientSchema>)}>Editar</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openForm(client)}>Editar</DropdownMenuItem>
         <DropdownMenuItem onClick={() => toast({ title: "Próximamente", description: "La vista de perfil de cliente estará disponible pronto." })}>
           Ver Perfil
         </DropdownMenuItem>

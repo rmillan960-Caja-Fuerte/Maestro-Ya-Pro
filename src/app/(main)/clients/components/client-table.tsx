@@ -15,6 +15,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  Table as ReactTable,
 } from "@tanstack/react-table"
 
 import {
@@ -59,17 +60,18 @@ export function ClientTable<TData, TValue>({
 
   const handleSaveClient = async (clientData: Omit<Client, 'id'>) => {
     try {
+      const clientToSave = clientSchema.omit({id: true}).parse(clientData);
       if (selectedClient && selectedClient.id) {
         // Update existing client
         const clientRef = doc(firestore, "clients", selectedClient.id);
-        await setDoc(clientRef, clientData, { merge: true });
+        await setDoc(clientRef, clientToSave, { merge: true });
         toast({
           title: "Cliente actualizado",
           description: "La información del cliente ha sido actualizada.",
         });
       } else {
         // Create new client
-        await addDoc(collection(firestore, "clients"), clientData);
+        await addDoc(collection(firestore, "clients"), clientToSave);
         toast({
           title: "Cliente creado",
           description: "El nuevo cliente ha sido añadido a tu lista.",
@@ -118,7 +120,7 @@ export function ClientTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <ClientTableToolbar table={table} />
+      <ClientTableToolbar table={table as ReactTable<any>} />
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -169,7 +171,7 @@ export function ClientTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <ClientTablePagination table={table} />
+      <ClientTablePagination table={table as ReactTable<any>} />
       <ClientFormDialog
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}

@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { collection } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 
 import { columns } from './components/client-columns';
@@ -22,10 +22,9 @@ export default function ClientsPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   
   const clientsQuery = useMemoFirebase(() => {
-    // Wait until the user is authenticated and firestore is available before creating the query.
     if (!firestore || !user) return null;
-    return collection(firestore, 'clients');
-  }, [firestore, user?.uid]); // Depend on user.uid for stability
+    return query(collection(firestore, 'clients'), where('ownerId', '==', user.uid));
+  }, [firestore, user?.uid]); 
 
   const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery);
 
