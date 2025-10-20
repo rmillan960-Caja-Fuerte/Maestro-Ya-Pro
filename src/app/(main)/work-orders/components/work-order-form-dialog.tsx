@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { workOrderSchema, statuses, workOrderPaymentSchema } from '../data/schema';
+import { workOrderSchema, statuses } from '../data/schema';
 import { Loader2, PlusCircle, Trash2, CalendarIcon, ImageIcon, Banknote, FileDigit } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -116,6 +116,8 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
         ? {
             ...workOrder,
             scheduledDate: workOrder.scheduledDate ? (workOrder.scheduledDate instanceof Timestamp ? workOrder.scheduledDate.toDate() : new Date(workOrder.scheduledDate)) : undefined,
+            completionDate: workOrder.completionDate ? (workOrder.completionDate instanceof Timestamp ? workOrder.completionDate.toDate() : new Date(workOrder.completionDate)) : undefined,
+            warrantyEndDate: workOrder.warrantyEndDate ? (workOrder.warrantyEndDate instanceof Timestamp ? workOrder.warrantyEndDate.toDate() : new Date(workOrder.warrantyEndDate)) : undefined,
             payments: workOrder.payments?.map(p => ({...p, date: p.date instanceof Timestamp ? p.date.toDate() : new Date(p.date) })) || [],
           }
         : {
@@ -201,7 +203,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 flex flex-col overflow-hidden">
-            <Tabs defaultValue="quote" className="flex-1 flex flex-col overflow-hidden">
+            <Tabs defaultValue="general" className="flex-1 flex flex-col overflow-hidden">
                 <TabsList className="w-full grid grid-cols-5">
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="quote">Cotización</TabsTrigger>
@@ -468,6 +470,57 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                 )}
                             />
                         )}
+                         <Separator />
+                        <div className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="completionDate"
+                                render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Fecha de Finalización</FormLabel>
+                                    <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                            "w-full pl-3 text-left font-normal",
+                                            !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {field.value ? (
+                                            format(field.value, "PPP", { locale: es })
+                                            ) : (
+                                            <span>Selecciona una fecha</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                        mode="single"
+                                        selected={field.value as Date | undefined}
+                                        onSelect={field.onChange}
+                                        initialFocus
+                                        />
+                                    </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="warrantyEndDate"
+                                render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Fin de Garantía (90 días)</FormLabel>
+                                    <Input value={field.value ? format(field.value, "PPP", { locale: es }) : 'Se calculará al finalizar'} disabled />
+                                </FormItem>
+                                )}
+                            />
+                        </div>
                     </TabsContent>
                     <TabsContent value="payments" className="mt-0 space-y-4">
                         <div className='grid grid-cols-3 gap-4 text-center'>

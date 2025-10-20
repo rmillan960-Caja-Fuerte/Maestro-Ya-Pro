@@ -53,9 +53,9 @@ export const workOrderSchema = z.object({
   evidence: z.array(z.object({ url: z.string(), stage: z.enum(['before', 'during', 'after'])})).optional(),
   createdAt: z.union([z.instanceof(Timestamp), z.string()]),
   updatedAt: z.union([z.instanceof(Timestamp), z.string()]).optional(),
-  scheduledDate: z.union([z.instanceof(Date), z.string()]).optional(),
-  completionDate: z.union([z.instanceof(Date), z.string()]).optional(),
-  warrantyEndDate: z.union([z.instanceof(Date), z.string()]).optional(),
+  scheduledDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
+  completionDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
+  warrantyEndDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
 })
 
 export type WorkOrder = z.infer<typeof workOrderSchema>
