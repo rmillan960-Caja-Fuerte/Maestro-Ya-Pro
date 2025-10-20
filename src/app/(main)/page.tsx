@@ -38,7 +38,6 @@ import type { ChartConfig } from '@/components/ui/chart';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, where, Timestamp, doc, CollectionReference } from 'firebase/firestore';
 import { type WorkOrder } from './work-orders/data/schema';
-import { type Client } from './clients/data/schema';
 import { specialties } from './masters/data/schema';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -91,31 +90,15 @@ export default function DashboardPage() {
     return query(q, orderBy('createdAt', 'desc'));
   }, [firestore, user?.uid, userProfile, selectedCountry]);
   
-  const clientsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !userProfile) return null;
-    
-    let q = collection(firestore, 'clients') as CollectionReference | query;
-
-    if (userProfile.role === 'SUPER_ADMIN') {
-        if (selectedCountry !== 'all') {
-            q = query(q, where('country', '==', selectedCountry));
-        }
-    } else {
-        q = query(q, where('country', '==', userProfile.country));
-    }
-    
-    return query(q);
-  }, [firestore, user?.uid, userProfile, selectedCountry]);
 
   // Data fetching - useCollection will not run if query is null
   const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!userProfile);
-  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery, !!userProfile);
-
-  const isLoading = isAuthLoading || isProfileLoading || (user && (isLoadingWorkOrders || isLoadingClients));
+  
+  const isLoading = isAuthLoading || isProfileLoading || (user && isLoadingWorkOrders);
 
   // Memoized data processing
   const dashboardData = React.useMemo(() => {
-    if (!workOrders || !clients) return {
+    if (!workOrders) return {
         kpi: { monthlyRevenue: 0, activeOrders: 0, conversionRate: 0, averageTicket: 0 },
         recentOrders: [],
         revenueChart: [],
@@ -145,11 +128,10 @@ export default function DashboardPage() {
     const approvedQuotesCount = workOrders.filter(wo => wo.status !== 'draft' && wo.status !== 'cancelled').length;
     const totalQuotesCount = workOrders.filter(wo => wo.status !== 'draft').length;
     const conversionRate = totalQuotesCount > 0 ? (approvedQuotesCount / totalQuotesCount) * 100 : 0;
-
-    const clientsMap = new Map(clients.map(c => [c.id, c.type === 'business' ? c.businessName : `${c.firstName} ${c.lastName}`]));
+    
     const recentOrders = workOrders.slice(0, 5).map(wo => ({
       ...wo,
-      clientName: clientsMap.get(wo.clientId) || 'Cliente Desconocido',
+      clientName: wo.clientName || 'Cliente Desconocido',
     }));
 
     // Revenue Chart Data
@@ -200,7 +182,7 @@ export default function DashboardPage() {
         ordersByCategory,
     };
 
-  }, [workOrders, clients]);
+  }, [workOrders]);
 
   const kpiData = [
     { title: 'Ingresos del Mes', value: formatCurrency(dashboardData.kpi.monthlyRevenue), icon: DollarSign, key: 'monthlyRevenue' },

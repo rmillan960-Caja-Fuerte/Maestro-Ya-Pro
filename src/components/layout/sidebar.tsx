@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -31,7 +30,6 @@ import { PERMISSIONS, ROLES } from '@/lib/permissions';
 
 const navItems = [
   { href: '/', icon: LayoutGrid, label: 'Dashboard', requiredPermission: null },
-  { href: '/clients', icon: UsersRound, label: 'Clientes', requiredPermission: PERMISSIONS.VIEW_CLIENTS },
   { href: '/masters', icon: Construction, label: 'Maestros', requiredPermission: PERMISSIONS.VIEW_MASTERS },
   { href: '/work-orders', icon: FileText, label: 'Órdenes', requiredPermission: PERMISSIONS.VIEW_WORK_ORDERS },
   { href: '/users', icon: Users, label: 'Usuarios', requiredPermission: PERMISSIONS.MANAGE_USERS },
