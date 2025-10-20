@@ -21,15 +21,15 @@ export default function ClientsPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   
   const clientsQuery = useMemoFirebase(() => {
-    // Solo construir la consulta si el usuario está autenticado y su UID está disponible.
+    // Only build the query if the user is authenticated and their UID is available.
     if (!firestore || !user?.uid) return null;
     return query(collection(firestore, 'clients'), where('ownerId', '==', user.uid));
   }, [firestore, user?.uid]); 
 
-  // `useCollection` manejará internamente el caso `null` y no ejecutará la consulta.
+  // `useCollection` will internally handle the `null` case and not execute the query.
   const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery, !!user);
 
-  // La carga está completa solo cuando la autenticación ha terminado y, si hay un usuario, los datos se han cargado.
+  // Loading is complete only when auth has finished and, if there's a user, the data has loaded.
   const isLoading = isAuthLoading || (user && isDataLoading);
 
   return (

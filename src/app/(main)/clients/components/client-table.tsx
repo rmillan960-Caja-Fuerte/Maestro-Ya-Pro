@@ -71,15 +71,17 @@ export function ClientTable<TData, TValue>({
         return;
     }
 
+    const dataToSave = { ...clientData, ownerId: user.uid };
+
     try {
       if (selectedClient && selectedClient.id) {
         // Update existing client
         const clientRef = doc(firestore, "clients", selectedClient.id);
-        setDoc(clientRef, clientData, { merge: true }).catch(err => {
+        setDoc(clientRef, dataToSave, { merge: true }).catch(err => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: clientRef.path,
                 operation: 'update',
-                requestResourceData: clientData,
+                requestResourceData: dataToSave,
             }))
         });
         toast({
@@ -88,7 +90,6 @@ export function ClientTable<TData, TValue>({
         });
       } else {
         // Create new client
-        const dataToSave = { ...clientData, ownerId: user.uid };
         addDoc(collection(firestore, "clients"), dataToSave).catch(err => {
              errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'clients',

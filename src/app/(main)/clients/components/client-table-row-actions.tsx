@@ -29,7 +29,7 @@ export function ClientTableRowActions<TData>({
 }: ClientTableRowActionsProps<TData>) {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { openForm } = (table.options.meta as { openForm: (client?: z.infer<typeof clientSchema>) => void });
+  const meta = table.options.meta as { openForm: (client?: z.infer<typeof clientSchema>) => void } | undefined;
   const client = clientSchema.parse(row.original);
 
   const handleDelete = async () => {
@@ -50,6 +50,12 @@ export function ClientTableRowActions<TData>({
     }
   }
 
+  const openForm = () => {
+    if (meta?.openForm) {
+      meta.openForm(client);
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -62,7 +68,7 @@ export function ClientTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem onClick={() => openForm(client)}>Editar</DropdownMenuItem>
+        <DropdownMenuItem onClick={openForm}>Editar</DropdownMenuItem>
         <DropdownMenuItem onClick={() => toast({ title: "Próximamente", description: "La vista de perfil de cliente estará disponible pronto." })}>
           Ver Perfil
         </DropdownMenuItem>

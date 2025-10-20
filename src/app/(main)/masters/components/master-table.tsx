@@ -28,7 +28,7 @@ import { MasterTableToolbar } from "./master-table-toolbar"
 import { MasterTablePagination } from "./master-table-pagination"
 import { MasterFormDialog } from "./master-form-dialog"
 import { doc, setDoc, addDoc, collection } from "firebase/firestore"
-import { useFirestore } from "@/firebase"
+import { useFirestore, useUser } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { masterSchema, type Master } from "../data/schema"
 import type { z } from "zod"
@@ -53,19 +53,31 @@ export function MasterTable<TData, TValue>({
   const [selectedMaster, setSelectedMaster] = React.useState<z.infer<typeof masterSchema> | null>(null);
 
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const handleSaveMaster = async (masterData: Omit<Master, 'id'>) => {
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Error de autenticación",
+            description: "Debes iniciar sesión para guardar un maestro.",
+        });
+        return;
+    }
+    
+    const dataToSave = { ...masterData, ownerId: user.uid };
+    
     try {
       if (selectedMaster && selectedMaster.id) {
         const masterRef = doc(firestore, "masters", selectedMaster.id);
-        await setDoc(masterRef, masterData, { merge: true });
+        await setDoc(masterRef, dataToSave, { merge: true });
         toast({
           title: "Maestro actualizado",
           description: "La información del maestro ha sido actualizada.",
         });
       } else {
-        await addDoc(collection(firestore, "masters"), masterData);
+        await addDoc(collection(firestore, "masters"), dataToSave);
         toast({
           title: "Maestro creado",
           description: "El nuevo maestro ha sido añadido a tu lista.",
