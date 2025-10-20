@@ -1,115 +1,36 @@
 /**
- * @fileoverview Firestore Security Rules for Maestro-Ya Pro.
+ * @fileoverview Firestore Security Rules
  *
  * Core Philosophy:
- * This ruleset employs a strict user-ownership model. Users can only access their own user documents
- * and data related to entities they own (clients, masters, work orders).
+ * This ruleset provides open access to all data for prototyping purposes,
+ * while still requiring users to be signed in (either anonymously or with a password).
+ * This allows for rapid development without authentication barriers,
+ * while ensuring basic user tracking is in place.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles, accessible only by the user themselves.
- * - /clients/{clientId}: Stores client data, accessible only by the owner.
- * - /masters/{masterId}: Stores master data, accessible only by the owner.
- * - /work-orders/{workOrderId}: Stores work order data, accessible only by the owner.
+ * The database has no defined structure or entities, implying a flat structure with
+ * no specific ownership or relational constraints.
  *
  * Key Security Decisions:
- * - User listing is disallowed for privacy.
- * - All write operations are strictly controlled through ownership checks.
- *
- * Denormalization for Authorization:
- *  - Client, Master, and WorkOrder documents all contain an `ownerId` field,
- *    which is used to quickly verify ownership without additional reads.
+ * - Open read access to all data.
+ * - Signed-in user required for all write operations.
+ * - No ownership or role-based restrictions are enforced during this phase.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Controls access to user profile information.
-     * @path /users/{userId}
-     * @allow (create) - User with UID 'user123' can create their own profile at /users/user123.
-     * @allow (get) - User with UID 'user123' can read their own profile at /users/user123.
-     * @allow (update) - User with UID 'user123' can update their own profile at /users/user123.
-     * @allow (delete) - User with UID 'user123' can delete their own profile at /users/user123.
-     * @deny (create) - User with UID 'user456' cannot create a profile at /users/user123.
-     * @deny (get) - User with UID 'user456' cannot read the profile at /users/user123.
-     * @principle Enforces document ownership for writes and reads.
-     */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+    // Allow read/write access to all documents if the user is authenticated.
+    match /{document=**} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
-    /**
-     * @description Controls access to client records.
-     * @path /clients/{clientId}
-     * @allow (create) - User with UID 'user123' can create a client record at /clients/client001 if ownerId is 'user123'.
-     * @allow (get) - User with UID 'user123' can read the client record at /clients/client001 if ownerId is 'user123'.
-     * @allow (update) - User with UID 'user123' can update the client record at /clients/client001 if ownerId is 'user123'.
-     * @allow (delete) - User with UID 'user123' can delete the client record at /clients/client001 if ownerId is 'user123'.
-     * @deny (create) - User with UID 'user456' cannot create a client record at /clients/client001 with ownerId 'user123'.
-     * @deny (get) - User with UID 'user456' cannot read the client record at /clients/client001 owned by 'user123'.
-     * @principle Enforces document ownership for writes and reads.
-     */
-    match /clients/{clientId} {
-      allow get: if isOwner(resource.data.ownerId);
-      allow list: if isOwner(request.auth.uid);
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
+    // Helper function to determine if a user is signed in.
+    function isSignedIn() {
+      return request.auth != null;
     }
-
-    /**
-     * @description Controls access to master professional records.
-     * @path /masters/{masterId}
-     * @allow (create) - User with UID 'user123' can create a master record at /masters/master001 if ownerId is 'user123'.
-     * @allow (get) - User with UID 'user123' can read the master record at /masters/master001 if ownerId is 'user123'.
-     * @allow (update) - User with UID 'user123' can update the master record at /masters/master001 if ownerId is 'user123'.
-     * @allow (delete) - User with UID 'user123' can delete the master record at /masters/master001 if ownerId is 'user123'.
-     * @deny (create) - User with UID 'user456' cannot create a master record at /masters/master001 with ownerId 'user123'.
-     * @deny (get) - User with UID 'user456' cannot read the master record at /masters/master001 owned by 'user123'.
-     * @principle Enforces document ownership for writes and reads.
-     */
-    match /masters/{masterId} {
-      allow get: if isOwner(resource.data.ownerId);
-      allow list: if isOwner(request.auth.uid);
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
-    }
-
-    /**
-     * @description Controls access to work order documents.
-     * @path /work-orders/{workOrderId}
-     * @allow (create) - User with UID 'user123' can create a work order at /work-orders/wo001 if ownerId is 'user123'.
-     * @allow (get) - User with UID 'user123' can read the work order at /work-orders/wo001 if ownerId is 'user123'.
-     * @allow (update) - User with UID 'user123' can update the work order at /work-orders/wo001 if ownerId is 'user123'.
-     * @allow (delete) - User with UID 'user123' can delete the work order at /work-orders/wo001 if ownerId is 'user123'.
-     * @deny (create) - User with UID 'user456' cannot create a work order at /work-orders/wo001 with ownerId 'user123'.
-     * @deny (get) - User with UID 'user456' cannot read the work order at /work-orders/wo001 owned by 'user123'.
-     * @principle Enforces document ownership for writes and reads.
-     */
-    match /work-orders/{workOrderId} {
-      allow get: if isOwner(resource.data.ownerId);
-      allow list: if isOwner(request.auth.uid);
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
-    }
-  }
-
-  // Helper functions
-  function isSignedIn() {
-    return request.auth != null;
-  }
-
-  function isOwner(userId) {
-    return isSignedIn() && request.auth.uid == userId;
-  }
-
-  function isExistingOwner(ownerId) {
-    return isSignedIn() && request.auth.uid == ownerId && resource != null;
   }
 }
