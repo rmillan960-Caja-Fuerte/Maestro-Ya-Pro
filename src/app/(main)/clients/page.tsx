@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -22,7 +21,7 @@ export default function ClientsPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   
   const clientsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+    if (!firestore || !user?.uid) return null;
     return query(collection(firestore, 'clients'), where('ownerId', '==', user.uid));
   }, [firestore, user?.uid]); 
 

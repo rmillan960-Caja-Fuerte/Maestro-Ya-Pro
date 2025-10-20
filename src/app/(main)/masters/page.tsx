@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useMemo } from 'react';
-import { collection } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 
 import { columns } from './components/master-columns';
@@ -22,8 +21,8 @@ export default function MastersPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   
   const mastersQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, 'masters');
+    if (!firestore || !user?.uid) return null;
+    return query(collection(firestore, 'masters'), where('ownerId', '==', user.uid));
   }, [firestore, user?.uid]);
 
   const { data: masters, isLoading: isDataLoading } = useCollection<Master>(mastersQuery);
