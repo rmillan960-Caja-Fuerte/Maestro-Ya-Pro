@@ -1,0 +1,1241 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user within the Maestro-Ya Pro application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "uid": {
+          "type": "string",
+          "description": "Firebase UID of the user, linked to the authentication system."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the user within the application (e.g., super_admin, admin, operator, viewer)."
+        },
+        "permissions": {
+          "type": "array",
+          "description": "List of permissions granted to the user (e.g., create_quotes, approve_payments, manage_masters).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "profile": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity. (Relationship: User 1:1 UserProfile)"
+        },
+        "preferences": {
+          "type": "string",
+          "description": "Reference to the UserPreferences entity. (Relationship: User 1:1 UserPreferences)"
+        },
+        "metadata": {
+          "type": "string",
+          "description": "Reference to the UserMetadata entity. (Relationship: User 1:1 UserMetadata)"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates whether the user account is active."
+        },
+        "twoFactorEnabled": {
+          "type": "boolean",
+          "description": "Indicates whether two-factor authentication is enabled for the user."
+        }
+      },
+      "required": [
+        "id",
+        "uid",
+        "email",
+        "role",
+        "permissions",
+        "profile",
+        "preferences",
+        "metadata",
+        "isActive",
+        "twoFactorEnabled"
+      ]
+    },
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents the profile information for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User entity. (Relationship: User 1:1 UserProfile)"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the user."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the user."
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "URL of the user's profile photo.",
+          "format": "uri"
+        },
+        "department": {
+          "type": "string",
+          "description": "Department the user belongs to."
+        },
+        "position": {
+          "type": "string",
+          "description": "Job position of the user."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "firstName",
+        "lastName",
+        "phone",
+        "photoUrl",
+        "department",
+        "position"
+      ]
+    },
+    "UserPreferences": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserPreferences",
+      "type": "object",
+      "description": "Represents the preferences of a user within the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserPreferences entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User entity. (Relationship: User 1:1 UserPreferences)"
+        },
+        "theme": {
+          "type": "string",
+          "description": "Preferred theme of the application (e.g., light, dark, auto)."
+        },
+        "language": {
+          "type": "string",
+          "description": "Preferred language of the application (e.g., es, en)."
+        },
+        "notifications": {
+          "type": "string",
+          "description": "Reference to the NotificationPreferences entity. (Relationship: UserPreferences 1:1 NotificationPreferences)"
+        },
+        "dashboard": {
+          "type": "string",
+          "description": "Reference to the DashboardPreferences entity. (Relationship: UserPreferences 1:1 DashboardPreferences)"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "theme",
+        "language",
+        "notifications",
+        "dashboard"
+      ]
+    },
+    "NotificationPreferences": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "NotificationPreferences",
+      "type": "object",
+      "description": "Represents notification preferences for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the NotificationPreferences entity."
+        },
+        "userPreferencesId": {
+          "type": "string",
+          "description": "Reference to the UserPreferences entity. (Relationship: UserPreferences 1:1 NotificationPreferences)"
+        },
+        "email": {
+          "type": "boolean",
+          "description": "Indicates whether email notifications are enabled."
+        },
+        "push": {
+          "type": "boolean",
+          "description": "Indicates whether push notifications are enabled."
+        },
+        "sms": {
+          "type": "boolean",
+          "description": "Indicates whether SMS notifications are enabled."
+        },
+        "whatsapp": {
+          "type": "boolean",
+          "description": "Indicates whether WhatsApp notifications are enabled."
+        }
+      },
+      "required": [
+        "id",
+        "userPreferencesId",
+        "email",
+        "push",
+        "sms",
+        "whatsapp"
+      ]
+    },
+    "DashboardPreferences": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DashboardPreferences",
+      "type": "object",
+      "description": "Represents dashboard preferences for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DashboardPreferences entity."
+        },
+        "userPreferencesId": {
+          "type": "string",
+          "description": "Reference to the UserPreferences entity. (Relationship: UserPreferences 1:1 DashboardPreferences)"
+        },
+        "defaultView": {
+          "type": "string",
+          "description": "Default view to display on the dashboard."
+        },
+        "favoriteWidgets": {
+          "type": "array",
+          "description": "List of favorite widgets to display on the dashboard.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userPreferencesId",
+        "defaultView",
+        "favoriteWidgets"
+      ]
+    },
+    "UserMetadata": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserMetadata",
+      "type": "object",
+      "description": "Represents metadata about a user's account.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserMetadata entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User entity. (Relationship: User 1:1 UserMetadata)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "lastLogin": {
+          "type": "string",
+          "description": "Timestamp indicating the last time the user logged in.",
+          "format": "date-time"
+        },
+        "loginCount": {
+          "type": "number",
+          "description": "Number of times the user has logged in."
+        },
+        "ipAddress": {
+          "type": "string",
+          "description": "IP address of the user's last login."
+        },
+        "deviceInfo": {
+          "type": "string",
+          "description": "Information about the device used for the user's last login."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "createdAt",
+        "lastLogin",
+        "loginCount",
+        "ipAddress",
+        "deviceInfo"
+      ]
+    },
+    "Client": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Client",
+      "type": "object",
+      "description": "Represents a client within the Maestro-Ya Pro application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the client entity."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Reference to the User entity who created the client. (Relationship: User 1:N Client)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of client (e.g., individual, business)."
+        },
+        "basicInfo": {
+          "type": "string",
+          "description": "Reference to the ClientBasicInfo entity. (Relationship: Client 1:1 ClientBasicInfo)"
+        },
+        "contact": {
+          "type": "string",
+          "description": "Reference to the ClientContact entity. (Relationship: Client 1:1 ClientContact)"
+        },
+        "addresses": {
+          "type": "array",
+          "description": "List of addresses associated with the client.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "financial": {
+          "type": "string",
+          "description": "Reference to the ClientFinancial entity. (Relationship: Client 1:1 ClientFinancial)"
+        },
+        "documents": {
+          "type": "array",
+          "description": "List of document IDs associated with the client.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "segmentation": {
+          "type": "string",
+          "description": "Reference to the ClientSegmentation entity. (Relationship: Client 1:1 ClientSegmentation)"
+        },
+        "preferences": {
+          "type": "string",
+          "description": "Reference to the ClientPreferences entity. (Relationship: Client 1:1 ClientPreferences)"
+        },
+        "metadata": {
+          "type": "string",
+          "description": "Reference to the ClientMetadata entity. (Relationship: Client 1:1 ClientMetadata)"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the client (e.g., active, inactive, blocked)."
+        },
+        "rating": {
+          "type": "number",
+          "description": "Rating of the client (e.g., punctuality in payments)."
+        },
+        "isDeleted": {
+          "type": "boolean",
+          "description": "Indicates whether the client has been marked as deleted."
+        },
+        "deletedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the client was marked as deleted.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "type",
+        "basicInfo",
+        "contact",
+        "addresses",
+        "financial",
+        "documents",
+        "segmentation",
+        "preferences",
+        "metadata",
+        "status",
+        "rating",
+        "isDeleted"
+      ]
+    },
+    "ClientBasicInfo": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientBasicInfo",
+      "type": "object",
+      "description": "Represents the basic information of a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ClientBasicInfo entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity. (Relationship: Client 1:1 ClientBasicInfo)"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "First name of the client (if individual)."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the client (if individual)."
+        },
+        "businessName": {
+          "type": "string",
+          "description": "Business name of the client (if business)."
+        },
+        "idType": {
+          "type": "string",
+          "description": "Type of identification (e.g., cedula, ruc, passport)."
+        },
+        "idNumber": {
+          "type": "string",
+          "description": "Identification number."
+        },
+        "taxId": {
+          "type": "string",
+          "description": "Tax identification number (if applicable)."
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "URL of the client's photo.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "firstName",
+        "lastName",
+        "idType",
+        "idNumber",
+        "photoUrl"
+      ]
+    },
+    "ClientContact": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientContact",
+      "type": "object",
+      "description": "Represents the contact information for a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ClientContact entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity. (Relationship: Client 1:1 ClientContact)"
+        },
+        "primaryPhone": {
+          "type": "string",
+          "description": "Primary phone number of the client."
+        },
+        "secondaryPhone": {
+          "type": "string",
+          "description": "Secondary phone number of the client."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the client.",
+          "format": "email"
+        },
+        "whatsapp": {
+          "type": "string",
+          "description": "WhatsApp number of the client."
+        },
+        "preferredChannel": {
+          "type": "string",
+          "description": "Preferred communication channel of the client (e.g., phone, whatsapp, email, sms)."
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "primaryPhone",
+        "email",
+        "whatsapp",
+        "preferredChannel"
+      ]
+    },
+    "ClientAddress": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientAddress",
+      "type": "object",
+      "description": "Represents an address associated with a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ClientAddress entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity. (Relationship: Client 1:N ClientAddress)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of address (e.g., home, office, other)."
+        },
+        "label": {
+          "type": "string",
+          "description": "Label for the address."
+        },
+        "street": {
+          "type": "string",
+          "description": "Street address."
+        },
+        "city": {
+          "type": "string",
+          "description": "City."
+        },
+        "state": {
+          "type": "string",
+          "description": "State."
+        },
+        "zipCode": {
+          "type": "string",
+          "description": "Zip code."
+        },
+        "country": {
+          "type": "string",
+          "description": "Country."
+        },
+        "coordinates": {
+          "type": "string",
+          "description": "Reference to the Coordinates entity. (Relationship: ClientAddress 1:1 Coordinates)"
+        },
+        "isPrimary": {
+          "type": "boolean",
+          "description": "Indicates whether this is the primary address."
+        },
+        "instructions": {
+          "type": "string",
+          "description": "Instructions for the master."
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "type",
+        "label",
+        "street",
+        "city",
+        "state",
+        "zipCode",
+        "country",
+        "coordinates",
+        "isPrimary",
+        "instructions"
+      ]
+    },
+    "ClientFinancial": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientFinancial",
+      "type": "object",
+      "description": "Represents the financial information for a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ClientFinancial entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity. (Relationship: Client 1:1 ClientFinancial)"
+        },
+        "creditLimit": {
+          "type": "number",
+          "description": "Credit limit for the client."
+        },
+        "paymentTerms": {
+          "type": "number",
+          "description": "Payment terms in days."
+        },
+        "preferredPaymentMethod": {
+          "type": "array",
+          "description": "List of preferred payment methods.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "taxExempt": {
+          "type": "boolean",
+          "description": "Indicates whether the client is tax exempt."
+        },
+        "discount": {
+          "type": "number",
+          "description": "Discount percentage for the client."
+        },
+        "accountBalance": {
+          "type": "number",
+          "description": "Account balance of the client."
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "creditLimit",
+        "paymentTerms",
+        "preferredPaymentMethod",
+        "taxExempt",
+        "discount",
+        "accountBalance"
+      ]
+    },
+    "ClientDocument": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientDocument",
+      "type": "object",
+      "description": "Represents a document associated with a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ClientDocument entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity. (Relationship: Client 1:N ClientDocument)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of document."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the document."
+        },
+        "url": {
+          "type": "string",
+          "description": "URL of the document.",
+          "format": "uri"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the document was uploaded.",
+          "format": "date-time"
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "Timestamp indicating the expiry date of the document.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "type",
+        "name",
+        "url",
+        "uploadedAt"
+      ]
+    },
+    "ClientSegmentation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientSegmentation",
+      "type": "object",
+      "description": "Represents the segmentation information for a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ClientSegmentation entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity. (Relationship: Client 1:1 ClientSegmentation)"
+        },
+        "tier": {
+          "type": "string",
+          "description": "Tier of the client (e.g., bronze, silver, gold, platinum)."
+        },
+        "tags": {
+          "type": "array",
+          "description": "List of tags associated with the client.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string",
+          "description": "Source of the client (e.g., web, referral, social, advertising)."
+        },
+        "referredBy": {
+          "type": "string",
+          "description": "Reference to the Client entity that referred this client. (Relationship: Client 1:N Client (Self-Reference))"
+        },
+        "lifetimeValue": {
+          "type": "number",
+          "description": "Lifetime value of the client."
+        },
+        "averageTicket": {
+          "type": "number",
+          "description": "Average ticket value for the client."
+        },
+        "totalOrders": {
+          "type": "number",
+          "description": "Total number of orders placed by the client."
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "tier",
+        "tags",
+        "source",
+        "lifetimeValue",
+        "averageTicket",
+        "totalOrders"
+      ]
+    },
+    "ClientPreferences": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientPreferences",
+      "type": "object",
+      "description": "Represents the preferences of a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ClientPreferences entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity. (Relationship: Client 1:1 ClientPreferences)"
+        },
+        "serviceCategories": {
+          "type": "array",
+          "description": "List of preferred service categories for the client.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "preferredMasters": {
+          "type": "array",
+          "description": "List of preferred master IDs for the client.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blacklistedMasters": {
+          "type": "array",
+          "description": "List of blacklisted master IDs for the client.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "specialRequirements": {
+          "type": "string",
+          "description": "Special requirements for the client."
+        },
+        "schedule": {
+          "type": "string",
+          "description": "Reference to the ClientSchedule entity. (Relationship: ClientPreferences 1:1 ClientSchedule)"
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "serviceCategories",
+        "preferredMasters",
+        "blacklistedMasters",
+        "specialRequirements",
+        "schedule"
+      ]
+    },
+    "ClientSchedule": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientSchedule",
+      "type": "object",
+      "description": "Represents the schedule preferences of a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ClientSchedule entity."
+        },
+        "clientPreferencesId": {
+          "type": "string",
+          "description": "Reference to the ClientPreferences entity. (Relationship: ClientPreferences 1:1 ClientSchedule)"
+        },
+        "availability": {
+          "type": "string",
+          "description": "General availability of the client."
+        },
+        "restrictedHours": {
+          "type": "array",
+          "description": "List of restricted hours for the client.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "clientPreferencesId",
+        "availability",
+        "restrictedHours"
+      ]
+    },
+    "ClientMetadata": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ClientMetadata",
+      "type": "object",
+      "description": "Represents metadata associated with a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ClientMetadata entity."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to the Client entity. (Relationship: Client 1:1 ClientMetadata)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the client was created.",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Reference to the User entity who created the client. (Relationship: User 1:N ClientMetadata)"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the client was last updated.",
+          "format": "date-time"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Reference to the User entity who last updated the client. (Relationship: User 1:N ClientMetadata)"
+        },
+        "lastOrderDate": {
+          "type": "string",
+          "description": "Timestamp indicating the date of the client's last order.",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes about the client."
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "createdAt",
+        "createdBy",
+        "updatedAt",
+        "updatedBy"
+      ]
+    },
+    "Master": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Master",
+      "type": "object",
+      "description": "Represents a master (professional) within the Maestro-Ya Pro application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the master entity."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Reference to the User entity who manages the master. (Relationship: User 1:N Master)"
+        },
+        "personalInfo": {
+          "type": "string",
+          "description": "Reference to the MasterPersonalInfo entity. (Relationship: Master 1:1 MasterPersonalInfo)"
+        },
+        "contact": {
+          "type": "string",
+          "description": "Reference to the MasterContact entity. (Relationship: Master 1:1 MasterContact)"
+        },
+        "professional": {
+          "type": "string",
+          "description": "Reference to the MasterProfessional entity. (Relationship: Master 1:1 MasterProfessional)"
+        },
+        "financial": {
+          "type": "string",
+          "description": "Reference to the"
+        }
+      }
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user account information. Includes denormalized 'uid' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/profile/{profileId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile information.  Belongs to a specific user, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase UID of the user."
+            },
+            {
+              "name": "profileId",
+              "description": "The unique ID of the user profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/preferences/{preferencesId}",
+        "definition": {
+          "entityName": "UserPreferences",
+          "schema": {
+            "$ref": "#/backend/entities/UserPreferences"
+          },
+          "description": "Stores user preferences.  Belongs to a specific user, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase UID of the user."
+            },
+            {
+              "name": "preferencesId",
+              "description": "The unique ID of the user preferences."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/preferences/{preferencesId}/notifications/{notificationsId}",
+        "definition": {
+          "entityName": "NotificationPreferences",
+          "schema": {
+            "$ref": "#/backend/entities/NotificationPreferences"
+          },
+          "description": "Stores notification preferences for a user. Belongs to a specific user, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase UID of the user."
+            },
+            {
+              "name": "preferencesId",
+              "description": "The unique ID of the user preferences."
+            },
+            {
+              "name": "notificationsId",
+              "description": "The unique ID of the notification preferences."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/preferences/{preferencesId}/dashboard/{dashboardId}",
+        "definition": {
+          "entityName": "DashboardPreferences",
+          "schema": {
+            "$ref": "#/backend/entities/DashboardPreferences"
+          },
+          "description": "Stores dashboard preferences for a user.  Belongs to a specific user, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase UID of the user."
+            },
+            {
+              "name": "preferencesId",
+              "description": "The unique ID of the user preferences."
+            },
+            {
+              "name": "dashboardId",
+              "description": "The unique ID of the dashboard preferences."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/metadata/{metadataId}",
+        "definition": {
+          "entityName": "UserMetadata",
+          "schema": {
+            "$ref": "#/backend/entities/UserMetadata"
+          },
+          "description": "Stores metadata about a user.  Belongs to a specific user, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase UID of the user."
+            },
+            {
+              "name": "metadataId",
+              "description": "The unique ID of the user metadata."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}",
+        "definition": {
+          "entityName": "Client",
+          "schema": {
+            "$ref": "#/backend/entities/Client"
+          },
+          "description": "Stores client information. Includes denormalized 'ownerId' for authorization independence.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/basic_info/{basicInfoId}",
+        "definition": {
+          "entityName": "ClientBasicInfo",
+          "schema": {
+            "$ref": "#/backend/entities/ClientBasicInfo"
+          },
+          "description": "Stores basic client information. Belongs to a specific client, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "basicInfoId",
+              "description": "The unique ID of the client basic info."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/contact/{contactId}",
+        "definition": {
+          "entityName": "ClientContact",
+          "schema": {
+            "$ref": "#/backend/entities/ClientContact"
+          },
+          "description": "Stores client contact information. Belongs to a specific client, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "contactId",
+              "description": "The unique ID of the client contact."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/addresses/{addressId}",
+        "definition": {
+          "entityName": "ClientAddress",
+          "schema": {
+            "$ref": "#/backend/entities/ClientAddress"
+          },
+          "description": "Stores client addresses. Belongs to a specific client, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "addressId",
+              "description": "The unique ID of the client address."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/addresses/{addressId}/coordinates/{coordinatesId}",
+        "definition": {
+          "entityName": "Coordinates",
+          "schema": {
+            "$ref": "#/backend/entities/ClientAddress"
+          },
+          "description": "Stores client address coordinates. Belongs to a specific address, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "addressId",
+              "description": "The unique ID of the client address."
+            },
+            {
+              "name": "coordinatesId",
+              "description": "The unique ID of the client address coordinates."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/financial/{financialId}",
+        "definition": {
+          "entityName": "ClientFinancial",
+          "schema": {
+            "$ref": "#/backend/entities/ClientFinancial"
+          },
+          "description": "Stores client financial information. Belongs to a specific client, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "financialId",
+              "description": "The unique ID of the client financial info."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/documents/{documentId}",
+        "definition": {
+          "entityName": "ClientDocument",
+          "schema": {
+            "$ref": "#/backend/entities/ClientDocument"
+          },
+          "description": "Stores client documents. Belongs to a specific client, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "documentId",
+              "description": "The unique ID of the client document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/segmentation/{segmentationId}",
+        "definition": {
+          "entityName": "ClientSegmentation",
+          "schema": {
+            "$ref": "#/backend/entities/ClientSegmentation"
+          },
+          "description": "Stores client segmentation information. Belongs to a specific client, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "segmentationId",
+              "description": "The unique ID of the client segmentation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/preferences/{preferencesId}",
+        "definition": {
+          "entityName": "ClientPreferences",
+          "schema": {
+            "$ref": "#/backend/entities/ClientPreferences"
+          },
+          "description": "Stores client preferences. Belongs to a specific client, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "preferencesId",
+              "description": "The unique ID of the client preferences."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/preferences/{preferencesId}/schedule/{scheduleId}",
+        "definition": {
+          "entityName": "ClientSchedule",
+          "schema": {
+            "$ref": "#/backend/entities/ClientSchedule"
+          },
+          "description": "Stores client schedule preferences. Belongs to a specific client preferences, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "preferencesId",
+              "description": "The unique ID of the client preferences."
+            },
+            {
+              "name": "scheduleId",
+              "description": "The unique ID of the client schedule."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/clients/{clientId}/metadata/{metadataId}",
+        "definition": {
+          "entityName": "ClientMetadata",
+          "schema": {
+            "$ref": "#/backend/entities/ClientMetadata"
+          },
+          "description": "Stores client metadata. Belongs to a specific client, no need for additional authorization data.",
+          "params": [
+            {
+              "name": "clientId",
+              "description": "The unique ID of the client."
+            },
+            {
+              "name": "metadataId",
+              "description": "The unique ID of the client metadata."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/masters/{masterId}",
+        "definition": {
+          "entityName": "Master",
+          "schema": {
+            "$ref": "#/backend/entities/Master"
+          },
+          "description": "Stores master (professional) information. Includes denormalized 'ownerId' for authorization independence.",
+          "params": [
+            {
+              "name": "masterId",
+              "description": "The unique ID of the master."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to align with the application's feature set, emphasizing secure, scalable, and maintainable data management. The key principle is Authorization Independence, achieved through denormalization of authorization data, primarily the 'ownerId' in collections like 'clients', 'masters', 'work_orders' and the denormalized 'members' map for collaborative access (if applicable). This eliminates the need for `get()` calls in security rules, enabling atomic operations and simplifying debugging. Structural Segregation ensures each collection has a homogeneous security posture, avoiding mixing data with different access requirements in the same collection.\n\n**Authorization Independence (Denormalization):**\n\n*   The `ownerId` field is present in the `clients`, `masters`, `work_orders` collections to directly associate the document with the user who owns/created it. This eliminates the need to perform a get() operation to check the owner based on some parent relationship.\n*   Future collaborative features should utilize membership maps denormalized into subcollections. For example, if `WorkOrder` documents require collaborative access, the `members` map (e.g., `{uid1: \"role\", uid2: \"role\"}`) should be copied into the `WorkOrder` document or its subcollections. \n\n**QAPs (Rules are not Filters):**\n\n*   The structure enables secure `list` operations by ensuring that all documents in a collection share the same security requirements. For instance, clients are stored in `/clients/{clientId}`, allowing a rule to check `request.auth.uid == resource.data.ownerId` to securely list only the clients owned by the requesting user. Separate collections would be required for any entities that must be publicly listable.\n\n**Private Data:**\n\n*   User data is stored under `/users/{userId}`, ensuring that only the user or an admin can access it. User-owned entities like `UserProfile`, `UserPreferences`, and `UserMetadata` follow the same pattern, ensuring path-based ownership.\n\n**Global Roles (DBAC):**\n\n*   Global roles are stored in the `/users/{userId}` collection, which can be efficiently verified in rules. This design choice allows for secure and efficient authorization checks without the need for custom claims.\n\nThe data structure supports the integrity of ownership, timestamps, and denormalized data by explicitly defining data types and constraints in the schema for each entity."
+  }
+}
