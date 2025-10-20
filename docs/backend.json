@@ -23,6 +23,8 @@
       "type": "object",
       "properties": {
         "ownerId": { "type": "string" },
+        "country": { "type": "string", "description": "ISO 3166-1 alpha-2 country code." },
+        "city": { "type": "string" },
         "type": { "type": "string", "enum": ["individual", "business"] },
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
@@ -31,7 +33,7 @@
         "primaryPhone": { "type": "string" },
         "status": { "type": "string", "enum": ["active", "inactive", "pending"] }
       },
-      "required": ["ownerId", "type", "email", "primaryPhone", "status"]
+      "required": ["ownerId", "country", "type", "email", "primaryPhone", "status"]
     },
     "Master": {
       "title": "Master",
@@ -39,6 +41,8 @@
       "type": "object",
       "properties": {
         "ownerId": { "type": "string" },
+        "country": { "type": "string", "description": "ISO 3166-1 alpha-2 country code." },
+        "city": { "type": "string" },
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
         "email": { "type": "string", "format": "email" },
@@ -58,7 +62,7 @@
           }
         }
       },
-      "required": ["ownerId", "firstName", "lastName", "email", "phone", "specialties", "status"]
+      "required": ["ownerId", "country", "city", "firstName", "lastName", "email", "phone", "specialties", "status"]
     },
     "WorkOrder": {
       "title": "Work Order",
@@ -66,6 +70,7 @@
       "type": "object",
       "properties": {
          "ownerId": { "type": "string" },
+         "country": { "type": "string", "description": "ISO 3166-1 alpha-2 country code." },
          "orderNumber": { "type": "string" },
          "clientId": { "type": "string" },
          "masterId": { "type": "string" },
@@ -74,7 +79,7 @@
          "total": { "type": "number" },
          "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["ownerId", "orderNumber", "clientId", "status", "title", "total", "createdAt"]
+      "required": ["ownerId", "country", "orderNumber", "clientId", "status", "title", "total", "createdAt"]
     }
   },
   "auth": {

@@ -7,7 +7,8 @@
  * through an admin interface without requiring code changes.
  */
 
-// Initial configuration for Quito, Ecuador.
+// Structure: { countryCode: { cityCode: zones[] } }
+
 export const quitoZones = [
     { value: 'norte', label: 'Norte de Quito' },
     { value: 'centro-historico', label: 'Centro Histórico' },
@@ -20,20 +21,19 @@ export const quitoZones = [
     { value: 'otro', label: 'Otro (fuera de Quito)' },
 ];
 
-// Example for future expansion
-/*
-export const bogotaZones = [
-    { value: 'usaquen', label: 'Usaquén' },
-    { value: 'chapinero', label: 'Chapinero' },
-    { value: 'santa-fe', label: 'Santa Fe' },
+export const caracasZones = [
+    { value: 'chacao', label: 'Chacao' },
+    { value: 'baruta', label: 'Baruta' },
+    { value: 'el-hatillo', label: 'El Hatillo' },
+    { value: 'sucre', label: 'Sucre (Petare)' },
+    { value: 'libertador-centro', label: 'Libertador (Centro)' },
 ]
 
 export const allZones = {
-    'EC': {
+    'EC': { // Ecuador
         'UIO': quitoZones,
     },
-    'CO': {
-        'BOG': bogotaZones,
+    'VE': { // Venezuela
+        'CCS': caracasZones,
     }
 }
-*/

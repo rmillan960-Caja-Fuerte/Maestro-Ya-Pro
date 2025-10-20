@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { masterBaseSchema, statuses, specialties } from '../data/schema';
-import { quitoZones } from '../data/zones';
+import { quitoZones } from '../data/zones'; // Keep for now as default
 import { Loader2, X, FilePlus, Trash2, Link as LinkIcon } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +55,8 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
     resolver: zodResolver(formSchema),
     defaultValues: {
       ownerId: '',
+      country: 'EC', // Default to Ecuador
+      city: 'UIO',   // Default to Quito
       firstName: '',
       lastName: '',
       email: '',
@@ -78,6 +80,8 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
       } else {
         form.reset({
           ownerId: user?.uid || '',
+          country: 'EC',
+          city: 'UIO',
           firstName: '',
           lastName: '',
           email: '',
@@ -215,7 +219,7 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
               name="coverageZones"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Zonas de Cobertura (Quito)</FormLabel>
+                  <FormLabel>Zonas de Cobertura</FormLabel>
                   <Select onValueChange={(value) => {
                       if(value && !currentZones.includes(value)) {
                           form.setValue('coverageZones', [...currentZones, value])
