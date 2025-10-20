@@ -1,6 +1,7 @@
 import * as React from 'react';
 import AppHeader from '@/components/layout/header';
 import AppSidebar from '@/components/layout/sidebar';
+import { IntelligentAssistant } from '@/components/ai/intelligent-assistant';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +13,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
       </div>
+      <IntelligentAssistant />
     </div>
   );
 }
