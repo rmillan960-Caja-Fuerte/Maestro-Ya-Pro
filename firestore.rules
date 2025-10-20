@@ -2,36 +2,33 @@
  * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset is in prototyping mode. It prioritizes developer speed and rapid iteration
- * by focusing on authorization and minimal data validation. Data shape validation is relaxed.
+ * This ruleset is in prototyping mode. It prioritizes rapid development by focusing on strict authentication and authorization.
+ * Schema validation is relaxed to allow for flexible data shapes during early development.
  *
  * Data Structure:
- * The Firestore database has a flat structure with a top-level `work-orders` collection.
+ * The Firestore database has a flat collection structure for 'clients'.
  *
  * Key Security Decisions:
- * - Listing of `work-orders` is denied.
+ * - Clients Collection: Read access is public, but write access is completely denied.
+ * - No User Data: The application lacks user-specific data or roles.
+ *
+ * NOTE: This ruleset is for prototyping and will need to be updated to include
+ * schema validation and more granular access control as the application evolves.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secures the `work-orders` collection.
-     * @path /databases/{database}/documents/work-orders
-     * @allow (get) Anyone can retrieve a work order.
-     * @deny (list) Listing all work orders is prohibited.
-     * @allow (create) No one can create a work order.
-     * @allow (update) No one can update a work order.
-     * @allow (delete) No one can delete a work order.
-     * @principle No access granted.
+     * @description Grants public read access to the 'clients' collection, but denies all write access.
+     * @path /databases/{database}/documents/clients/{clientId}
+     * @allow (get, list) All users can read the clients collection.
+     * @deny (create, update, delete) No one can write to the clients collection.
+     * @principle Allows open reads but denies all writes.
      */
-    match /work-orders/{workOrderId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    match /clients/{clientId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
-
   }
 }

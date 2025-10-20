@@ -25,15 +25,15 @@ export default function WorkOrdersPage() {
 
   // 1. Define stable queries for all needed collections
   const workOrdersQuery = useMemoFirebase(() => 
-    !firestore || !user ? null : query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')),
+    !firestore || !user?.uid ? null : query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')),
     [firestore, user?.uid]
   );
   const clientsQuery = useMemoFirebase(() => 
-    !firestore || !user ? null : query(collection(firestore, 'clients'), where('ownerId', '==', user.uid)),
+    !firestore || !user?.uid ? null : query(collection(firestore, 'clients'), where('ownerId', '==', user.uid)),
     [firestore, user?.uid]
   );
   const mastersQuery = useMemoFirebase(() => 
-    !firestore || !user ? null : query(collection(firestore, 'masters')),
+    !firestore || !user?.uid ? null : query(collection(firestore, 'masters'), where('ownerId', '==', user.uid)),
     [firestore, user?.uid]
   );
 
