@@ -3,7 +3,8 @@
 
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
-import { masterSchema, statuses, quitoZones } from "../data/schema"
+import { masterSchema, statuses } from "../data/schema"
+import { quitoZones } from "../data/zones"
 import { MasterTableColumnHeader } from "./master-table-column-header"
 import { MasterTableRowActions } from "./master-table-row-actions"
 import { Badge } from "@/components/ui/badge"

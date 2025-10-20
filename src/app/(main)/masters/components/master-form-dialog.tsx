@@ -30,7 +30,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { masterBaseSchema, statuses, specialties, quitoZones } from '../data/schema';
+import { masterBaseSchema, statuses, specialties } from '../data/schema';
+import { quitoZones } from '../data/zones';
 import { Loader2, X, FilePlus, Trash2, Link as LinkIcon } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
@@ -214,7 +215,7 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
               name="coverageZones"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Zonas de Cobertura</FormLabel>
+                  <FormLabel>Zonas de Cobertura (Quito)</FormLabel>
                   <Select onValueChange={(value) => {
                       if(value && !currentZones.includes(value)) {
                           form.setValue('coverageZones', [...currentZones, value])

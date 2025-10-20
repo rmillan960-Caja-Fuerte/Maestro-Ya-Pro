@@ -48,14 +48,3 @@ export const specialties = [
     { value: 'gardening', label: 'Jardinería' },
     { value: 'cleaning', label: 'Limpieza' },
 ];
-
-export const quitoZones = [
-    { value: 'norte', label: 'Norte de Quito' },
-    { value: 'centro', label: 'Centro Histórico' },
-    { value: 'sur', label: 'Sur de Quito' },
-    { value: 'cumbaya', label: 'Cumbayá' },
-    { value: 'tumbaco', label: 'Tumbaco' },
-    { value: 'los-chillos', label: 'Valle de los Chillos' },
-    { value: 'calderon', label: 'Calderón' },
-    { value: 'la-concepcion', label: 'La Concepción' },
-];
