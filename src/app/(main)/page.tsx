@@ -38,7 +38,7 @@ import { Button } from '@/components/ui/button';
 import type { ChartConfig } from '@/components/ui/chart';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, where, Timestamp, doc, CollectionReference } from 'firebase/firestore';
-import { type WorkOrder } from './work-orders/data/schema';
+import { type WorkOrder, statuses as workOrderStatuses } from './work-orders/data/schema';
 import { specialties } from './masters/data/schema';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -345,7 +345,7 @@ export default function DashboardPage() {
             </TableHeader>
             <TableBody>
               {dashboardData.recentOrders.map((order) => (
-                <TableRow key={order.orderNumber}>
+                <TableRow key={order.id}>
                   <TableCell>
                     <div className="font-medium">{order.clientName || 'Cliente no asignado'}</div>
                   </TableCell>
@@ -353,8 +353,8 @@ export default function DashboardPage() {
                     {order.orderNumber}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge className="text-xs" variant="outline">
-                      {order.status}
+                     <Badge className="text-xs" variant={workOrderStatuses.find(s => s.value === order.status)?.variant as any || "outline"}>
+                      {workOrderStatuses.find(s => s.value === order.status)?.label || order.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">

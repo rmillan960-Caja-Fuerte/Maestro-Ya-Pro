@@ -88,46 +88,39 @@ export function ClientTable<TData, TValue>({
 
     const dataToSave = { ...clientData, ownerId: user.uid };
 
-    try {
+    
       if (selectedClient && selectedClient.id) {
         // Update existing client
         const clientRef = doc(firestore, "clients", selectedClient.id);
-        setDoc(clientRef, dataToSave, { merge: true }).catch(err => {
+        setDoc(clientRef, dataToSave, { merge: true }).then(() => {
+            toast({
+                title: "Cliente actualizado",
+                description: "La información del cliente ha sido actualizada.",
+            });
+        }).catch(err => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: clientRef.path,
                 operation: 'update',
                 requestResourceData: dataToSave,
             }))
         });
-        toast({
-          title: "Cliente actualizado",
-          description: "La información del cliente ha sido actualizada.",
-        });
       } else {
         // Create new client
-        addDoc(collection(firestore, "clients"), dataToSave).catch(err => {
+        addDoc(collection(firestore, "clients"), dataToSave).then(() => {
+            toast({
+                title: "Cliente creado",
+                description: "El nuevo cliente ha sido añadido a tu lista.",
+            });
+        }).catch(err => {
              errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'clients',
                 operation: 'create',
                 requestResourceData: dataToSave,
             }))
         });
-        toast({
-          title: "Cliente creado",
-          description: "El nuevo cliente ha sido añadido a tu lista.",
-        });
       }
       setIsFormOpen(false);
       setSelectedClient(null);
-    } catch (error) {
-      // This catch block is kept as a fallback, but specific permission errors are handled above.
-      console.error("Error saving client:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo guardar el cliente. Inténtalo de nuevo.",
-      });
-    }
   };
   
   const table = useReactTable({

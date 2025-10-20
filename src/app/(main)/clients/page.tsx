@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -20,6 +21,8 @@ import { CountryFilter } from '@/components/country-filter';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ClientKanbanView } from './components/client-kanban-view';
 import { useToast } from '@/hooks/use-toast';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { errorEmitter } from '@/firebase/error-emitter';
 
 export default function ClientsPage() {
   const firestore = useFirestore();
@@ -54,21 +57,24 @@ export default function ClientsPage() {
   const { data: clients, isLoading: isDataLoading, error } = useCollection<Client>(clientsQuery, !!userProfile);
 
   const handleStatusChange = async (clientId: string, newStatus: 'active' | 'inactive' | 'pending') => {
-    try {
-      const clientRef = doc(firestore, "clients", clientId);
-      await setDoc(clientRef, { status: newStatus }, { merge: true });
-      toast({
-        title: "Estado actualizado",
-        description: "El estado del cliente ha sido cambiado.",
-      })
-    } catch (error) {
-       console.error("Error updating client status:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo actualizar el estado del cliente.",
-      });
-    }
+    const clientRef = doc(firestore, "clients", clientId);
+    setDoc(clientRef, { status: newStatus }, { merge: true }).then(() => {
+        toast({
+            title: "Estado actualizado",
+            description: "El estado del cliente ha sido cambiado.",
+        });
+    }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: clientRef.path,
+            operation: 'update',
+            requestResourceData: { status: newStatus },
+        }));
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No se pudo actualizar el estado del cliente.",
+        });
+    });
   };
 
   const isLoading = isAuthLoading || isProfileLoading || (user && isDataLoading);
