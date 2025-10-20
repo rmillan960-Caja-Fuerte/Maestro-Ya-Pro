@@ -8,7 +8,24 @@ import { workOrderSchema, statuses } from "../data/schema"
 import { WorkOrderTableColumnHeader } from "./work-order-table-column-header"
 import { WorkOrderTableRowActions } from "./work-order-table-row-actions"
 import { Badge } from "@/components/ui/badge"
-import { formatCurrency, formatDate } from "@/lib/utils"
+import { cn, formatCurrency, formatDate } from "@/lib/utils"
+import { Timestamp } from "firebase/firestore"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+
+const isStale = (order: z.infer<typeof workOrderSchema>): boolean => {
+    const staleStatuses = ["draft", "quote_sent"];
+    if (!staleStatuses.includes(order.status)) {
+        return false;
+    }
+    
+    const orderDateValue = order.createdAt;
+    const orderDate = orderDateValue instanceof Timestamp ? orderDateValue.toDate() : new Date(orderDateValue);
+
+    const now = new Date();
+    const hoursDiff = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
+
+    return hoursDiff > 24;
+}
 
 export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
   {
@@ -40,7 +57,30 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
     header: ({ column }) => (
       <WorkOrderTableColumnHeader column={column} title="Nro. Orden" />
     ),
-    cell: ({ row }) => <div className="font-medium">{row.getValue("orderNumber")}</div>,
+    cell: ({ row }) => {
+        const order = row.original as z.infer<typeof workOrderSchema>;
+        const stale = isStale(order);
+        return (
+            <div className="flex items-center gap-2 font-medium">
+                {stale && (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <div className="relative flex h-3 w-3">
+                                    <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></div>
+                                    <div className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></div>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Atención: esta orden tiene más de 24h sin actualizarse.</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
+                {row.getValue("orderNumber")}
+            </div>
+        )
+    },
   },
   {
     accessorKey: "clientName",
@@ -62,7 +102,8 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
       <WorkOrderTableColumnHeader column={column} title="Fecha Creación" />
     ),
     cell: ({ row }) => {
-      return <div>{formatDate(row.getValue("createdAt"), 'short')}</div>;
+      const dateValue = row.getValue("createdAt");
+      return <div>{formatDate(dateValue as Date | Timestamp, 'short')}</div>;
     },
     sortingFn: 'datetime',
   },
@@ -83,10 +124,10 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
       return (
         <Badge
           style={{ 
-            backgroundColor: status.color, 
+            backgroundColor: status.color ? status.color : undefined, 
             color: status.color ? 'white' : undefined 
           }}
-          className={status.color ? 'border-transparent' : ''}
+          className={cn(status.color ? 'border-transparent' : '', 'whitespace-nowrap')}
           variant={status.variant as any}
         >
           {status.icon && <status.icon className="mr-2 h-3 w-3" />}
