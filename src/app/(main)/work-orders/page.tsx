@@ -1,7 +1,8 @@
-
 'use client';
 
 import * as React from 'react';
+import { collection } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import {
   Card,
   CardContent,
@@ -12,58 +13,52 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkOrderTable } from './components/work-order-table';
 import { columns } from './components/work-order-columns';
+import type { WorkOrder } from './data/schema';
+import type { Client } from '@/app/(main)/clients/data/schema';
+import type { Master } from '@/app/(main)/masters/data/schema';
 
-// Datos de ejemplo
-const sampleWorkOrders = [
-  {
-    id: "WO-001",
-    orderNumber: 'WO-2024-00123',
-    clientName: 'Constructora XYZ',
-    masterName: 'Juan Plomero',
-    status: 'completed',
-    total: 2500.00,
-    createdAt: new Date('2024-05-28').toISOString(),
-  },
-  {
-    id: "WO-002",
-    orderNumber: 'WO-2024-00124',
-    clientName: 'Ana Pérez',
-    masterName: 'Pedro Electricista',
-    status: 'in_progress',
-    total: 150.75,
-    createdAt: new Date('2024-05-29').toISOString(),
-  },
-  {
-    id: "WO-003",
-    orderNumber: 'WO-2024-00125',
-    clientName: 'Oficinas Central',
-    masterName: 'Luis Albañil',
-    status: 'scheduled',
-    total: 750.00,
-    createdAt: new Date('2024-05-30').toISOString(),
-  },
-    {
-    id: "WO-004",
-    orderNumber: 'WO-2024-00126',
-    clientName: 'Luis Gómez',
-    masterName: 'Mario Pintor',
-    status: 'quote_sent',
-    total: 300.00,
-    createdAt: new Date('2024-05-30').toISOString(),
-  },
-  {
-    id: "WO-005",
-    orderNumber: 'WO-2024-00127',
-    clientName: 'Inmobiliaria Futuro',
-    masterName: 'Juan Plomero',
-    status: 'paid',
-    total: 12500.00,
-    createdAt: new Date('2024-05-31').toISOString(),
-  },
-];
-
+// This component now fetches work orders, clients, and masters,
+// then combines them to display enriched data in the table.
 export default function WorkOrdersPage() {
-  const isLoading = false; // Cambiar a true para ver el esqueleto
+  const firestore = useFirestore();
+  const { user, isUserLoading: isAuthLoading } = useUser();
+
+  // 1. Define stable queries for all needed collections
+  const workOrdersQuery = useMemoFirebase(() => 
+    !firestore || !user ? null : collection(firestore, 'work-orders'),
+    [firestore, user?.uid]
+  );
+  const clientsQuery = useMemoFirebase(() => 
+    !firestore || !user ? null : collection(firestore, 'clients'),
+    [firestore, user?.uid]
+  );
+  const mastersQuery = useMemoFirebase(() => 
+    !firestore || !user ? null : collection(firestore, 'masters'),
+    [firestore, user?.uid]
+  );
+
+  // 2. Fetch data from all collections in parallel
+  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery);
+  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
+  const { data: masters, isLoading: isLoadingMasters } = useCollection<Master>(mastersQuery);
+
+  // Determine the overall loading state
+  const isLoading = isAuthLoading || isLoadingWorkOrders || isLoadingClients || isLoadingMasters;
+
+  // 3. Enrich the work orders with client and master names
+  const enrichedWorkOrders = React.useMemo(() => {
+    if (!workOrders || !clients || !masters) return [];
+
+    const clientsMap = new Map(clients.map(c => [c.id, c.type === 'business' ? c.businessName : `${c.firstName} ${c.lastName}`]));
+    const mastersMap = new Map(masters.map(m => [m.id, `${m.firstName} ${m.lastName}`]));
+
+    return workOrders.map(wo => ({
+      ...wo,
+      clientName: clientsMap.get(wo.clientId) || 'Cliente Desconocido',
+      masterName: mastersMap.get(wo.masterId) || 'No Asignado',
+    }));
+  }, [workOrders, clients, masters]);
+
 
   return (
     <Card>
@@ -92,11 +87,9 @@ export default function WorkOrdersPage() {
             </div>
           </div>
         ) : (
-          <WorkOrderTable columns={columns} data={sampleWorkOrders} />
+          <WorkOrderTable columns={columns} data={enrichedWorkOrders} />
         )}
       </CardContent>
     </Card>
   );
 }
-
-    

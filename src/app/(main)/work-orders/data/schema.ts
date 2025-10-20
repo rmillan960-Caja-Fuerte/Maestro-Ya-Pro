@@ -5,8 +5,10 @@ import { Circle, Clock, FileWarning, Pencil, CheckCircle2, Truck, DollarSign, XC
 export const workOrderSchema = z.object({
   id: z.string(),
   orderNumber: z.string(),
-  clientName: z.string(),
-  masterName: z.string().optional(),
+  clientId: z.string(),
+  clientName: z.string(), // This will be enriched data, not in Firestore
+  masterId: z.string().optional(),
+  masterName: z.string().optional(), // This will be enriched data, not in Firestore
   status: z.enum([
       "draft",
       "quote_sent",
@@ -73,5 +75,3 @@ export const statuses = [
     variant: "destructive",
   },
 ]
-
-    
