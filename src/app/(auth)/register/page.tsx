@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp, getDocs, collection, limit } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -41,12 +41,14 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// This is a simplified check. In a real app, this might be a call to a Cloud Function
-// that checks a protected collection of existing users.
+// This function checks if there are any users in the 'users' collection.
 async function isFirstUser(db: any): Promise<boolean> {
-  const querySnapshot = await db.collection('users').limit(1).get();
-  return querySnapshot.empty;
+    const usersCollection = collection(db, 'users');
+    const q = query(usersCollection, limit(1));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
 }
+
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = React.useState(false);
@@ -68,60 +70,42 @@ export default function RegisterPage() {
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     try {
-      // 1. Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password)
-        .catch(async (error) => {
-          // If user already exists, we might be trying to fix their role.
-          if (error.code === 'auth/email-already-in-use' && values.email === 'rmillan960@gmail.com') {
-            toast({
-              title: 'Cuenta existente',
-              description: 'Actualizando rol para el Super Admin...',
-            });
-            // We need to sign in to get the user object to proceed with role update
-            return signInWithEmailAndPassword(auth, values.email, values.password);
-          }
-          // If it's a different error or a different user, re-throw it.
-          throw error;
-        });
+      // 1. Check if this will be the first user.
+      const isFirst = await isFirstUser(firestore);
+      const finalRole = isFirst ? 'SUPER_ADMIN' : 'OPERATOR'; // Assign SUPER_ADMIN only if it's the very first user.
 
+      // 2. Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 2. Create or OVERWRITE user profile in Firestore
+      // 3. Create user profile in Firestore with the determined role
       const userRef = doc(firestore, 'users', user.uid);
-      
-      // The very first registered user is always a SUPER_ADMIN.
-      // Or, if it's the specific hardcoded super admin email, force the role.
-      const userDoc = await getDoc(userRef);
-      const isFirst = !userDoc.exists(); // Simple check: is this the first time we're setting this doc?
-
-      let finalRole = 'OPERATOR'; // Default role
-      if (isFirst || values.email === 'rmillan960@gmail.com') {
-        finalRole = 'SUPER_ADMIN';
-      }
-
       const roleInfo = ROLES[finalRole as keyof typeof ROLES];
 
       if (!roleInfo) {
         throw new Error(`Configuración de rol no encontrada para ${finalRole}.`);
       }
       
-      // Always set/overwrite the document to ensure permissions are correct.
       await setDoc(userRef, {
         uid: user.uid,
         email: values.email,
         firstName: values.firstName,
         lastName: values.lastName,
         role: finalRole,
-        permissions: roleInfo.permissions, // Assign all permissions for the role
+        permissions: roleInfo.permissions,
         createdAt: serverTimestamp(),
         isActive: true,
         photoUrl: `https://avatar.vercel.sh/${values.email}.png`
-      }, { merge: true }); // Use merge to avoid overwriting createdAt on re-registration
+      });
 
       toast({
         title: 'Registro exitoso',
-        description: `Tu cuenta de ${roleInfo.name} ha sido creada/actualizada.`,
+        description: `Tu cuenta de ${roleInfo.name} ha sido creada. Serás redirigido.`,
       });
+
+      // You might want to automatically set the custom claim for the first user here
+      // via a Cloud Function triggered on user creation. For this prototype,
+      // we will use a manual script.
 
       router.push('/');
     } catch (error: any) {
@@ -129,7 +113,7 @@ export default function RegisterPage() {
       
       let description = 'No se pudo crear tu cuenta. Por favor, inténtalo de nuevo.';
       if (error.code === 'auth/email-already-in-use') {
-        description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión.';
+        description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión o usa un correo diferente.';
       }
       
       toast({

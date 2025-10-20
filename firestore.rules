@@ -1,108 +1,195 @@
 /**
- * @file Firestore Security Rules
- * @core_philosophy This ruleset enforces a strict user-ownership model for all data.
- *   Each document is owned by a specific user, identified by their UID.
- *   Only the owner can create, read, update, or delete their own documents.
- * @data_structure
- *   - /users/{userId}: Stores user profile information.  `userId` MUST match the authenticated user's UID.
- *   - /clients/{clientId}: Stores client information. Each client document has an `ownerId` field that MUST match the authenticated user's UID.
- *   - /masters/{masterId}: Stores master/professional information. Each master document has an `ownerId` field that MUST match the authenticated user's UID.
- *   - /work-orders/{workOrderId}: Stores work order details. Each work order document has an `ownerId` field that MUST match the authenticated user's UID.
- * @key_security_decisions
- *   - User listing is disallowed.
- *   - All write operations are restricted to the document owner.
- *   - The 'role' and 'permissions' fields in the UserProfile are not directly used in these rules, but could be incorporated for more complex authorization logic in the future.
- *   - Data validation is minimal in this prototyping phase, focusing only on authorization-critical fields.
- * @denormalization_for_authorization The `ownerId` field is used throughout the data model to simplify authorization checks.
+ * @fileoverview Firestore Security Rules for Prototyping.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes strict authorization based on user identity and
+ * document ownership while keeping data-shape validation flexible. This
+ * allows for rapid iteration on the data model without sacrificing security.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profile information. Only the authenticated
+ *   user can read or write their own profile.
+ * - /clients/{clientId}: Stores client information. Only the owner (based on ownerId)
+ *   can create, read, update, or delete client documents.
+ * - /masters/{masterId}: Stores professional/master information. Only the owner
+ *   (based on ownerId) can create, read, update, or delete master documents.
+ * - /work-orders/{workOrderId}: Stores work order details. Only the owner
+ *   (based on ownerId) can create, read, update, or delete work order documents.
+ *
+ * Key Security Decisions:
+ * - User listing is explicitly denied to protect user privacy.
+ * - Data-shape validation is minimized to allow for flexible prototyping. Only
+ *   authorization-critical fields (e.g., ownerId) are validated.
+ * - All write operations are protected by authorization checks to prevent
+ *   unauthorized data modification or deletion.
+ *
+ * Denormalization for Authorization:
+ * - The 'Client', 'Master', and 'WorkOrder' entities all have an 'ownerId' field.
+ *   This denormalization allows the security rules to quickly verify ownership
+ *   without needing to perform additional reads.
+ *
+ * Structural Segregation:
+ * - Public and private data are stored in separate collections to simplify
+ *   security rules and improve performance.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Protects user profile information.
      * @path /users/{userId}
-     * @allow (create) Signed-in user with UID 'user123' can create a profile document at /users/user123.
-     * @allow (get, list) Signed-in user with UID 'user123' can read their profile document at /users/user123.
-     * @allow (update, delete) Signed-in user with UID 'user123' can update/delete their profile document at /users/user123.
-     * @deny (create) Signed-in user with UID 'user123' cannot create a profile document at /users/anotherUser.
-     * @deny (get, list, update, delete) Signed-in user with UID 'user123' cannot read/write another user's profile document at /users/anotherUser.
-     * @principle Enforces user-ownership: Only the user can manage their own profile.
+     * @allow (get) Authenticated user can read their own profile.
+     *   - Request: { auth: { uid: 'user123' }, method: 'get', path: '/databases/(default)/documents/users/user123' }
+     * @allow (create) Authenticated user can create their profile if the userId matches their auth.uid.
+     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/users/user123', data: { uid: 'user123' } }
+     * @allow (update) Authenticated user can update their own profile.
+     *   - Request: { auth: { uid: 'user123' }, method: 'update', path: '/databases/(default)/documents/users/user123', data: { firstName: 'New Name' } }
+     * @allow (delete) Authenticated user can delete their own profile.
+     *   - Request: { auth: { uid: 'user123' }, method: 'delete', path: '/databases/(default)/documents/users/user123' }
+     * @deny (get) User attempts to read another user's profile.
+     *   - Request: { auth: { uid: 'user456' }, method: 'get', path: '/databases/(default)/documents/users/user123' }
+     * @deny (create) User attempts to create a profile with a mismatched userId.
+     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/users/user456', data: { uid: 'user456' } }
+     * @deny (list) Listing all users is not allowed.
+     *   - Request: { auth: { uid: 'user123' }, method: 'list', path: '/databases/(default)/documents/users' }
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      // Check if the user is signed in.
-      allow get: if isSignedIn() && isOwner(userId);
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isSignedIn() && isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to client documents.
+     * @description Manages client documents.
      * @path /clients/{clientId}
-     * @allow (create) Signed-in user with UID 'user123' can create a client document at /clients/client456 with ownerId: 'user123'.
-     * @allow (get, list) Signed-in user with UID 'user123' can read the client document at /clients/client456 if ownerId: 'user123'.
-     * @allow (update, delete) Signed-in user with UID 'user123' can update/delete the client document at /clients/client456 if ownerId: 'user123'.
-     * @deny (create) Signed-in user with UID 'user123' cannot create a client document at /clients/client456 with ownerId: 'anotherUser'.
-     * @deny (get, list, update, delete) Signed-in user with UID 'user123' cannot read/write a client document at /clients/client456 if ownerId: 'anotherUser'.
-     * @principle Enforces document ownership: Only the owner can manage their clients.
+     * @allow (create) Owner can create a client document if the ownerId matches their auth.uid.
+     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/clients/client1', data: { ownerId: 'user123' } }
+     * @allow (get) Owner can read their own client document.
+     *   - Request: { auth: { uid: 'user123' }, method: 'get', path: '/databases/(default)/documents/clients/client1' }
+     * @allow (list) Owner can list their own client documents.
+     *   - Request: { auth: { uid: 'user123' }, method: 'list', path: '/databases/(default)/documents/clients' }
+     * @allow (update) Owner can update their own client document.
+     *   - Request: { auth: { uid: 'user123' }, method: 'update', path: '/databases/(default)/documents/clients/client1', data: { status: 'active' } }
+     * @allow (delete) Owner can delete their own client document.
+     *   - Request: { auth: { uid: 'user123' }, method: 'delete', path: '/databases/(default)/documents/clients/client1' }
+     * @deny (create) User attempts to create a client document for another user.
+     *   - Request: { auth: { uid: 'user456' }, method: 'create', path: '/databases/(default)/documents/clients/client1', data: { ownerId: 'user123' } }
+     * @deny (get) User attempts to read a client document owned by another user.
+     *   - Request: { auth: { uid: 'user456' }, method: 'get', path: '/databases/(default)/documents/clients/client1' }
+     * @principle Enforces document ownership for all operations.
      */
     match /clients/{clientId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(ownerId) {
+        return request.auth.uid == ownerId;
+      }
+
+      function isExistingOwner(ownerId) {
+        return isOwner(ownerId) && resource != null;
+      }
+
       allow get: if isSignedIn() && isOwner(resource.data.ownerId);
       allow list: if isSignedIn() && isOwner(request.auth.uid);
       allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
-      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
+      allow update: if isExistingOwner(resource.data.ownerId);
+      allow delete: if isExistingOwner(resource.data.ownerId);
     }
 
     /**
-     * @description Controls access to master/professional documents.
+     * @description Manages master documents.
      * @path /masters/{masterId}
-     * @allow (create) Signed-in user with UID 'user123' can create a master document at /masters/master789 with ownerId: 'user123'.
-     * @allow (get, list) Signed-in user with UID 'user123' can read the master document at /masters/master789 if ownerId: 'user123'.
-     * @allow (update, delete) Signed-in user with UID 'user123' can update/delete the master document at /masters/master789 if ownerId: 'user123'.
-     * @deny (create) Signed-in user with UID 'user123' cannot create a master document at /masters/master789 with ownerId: 'anotherUser'.
-     * @deny (get, list, update, delete) Signed-in user with UID 'user123' cannot read/write a master document at /masters/master789 if ownerId: 'anotherUser'.
-     * @principle Enforces document ownership: Only the owner can manage their masters.
+     * @allow (create) Owner can create a master document if the ownerId matches their auth.uid.
+     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/masters/master1', data: { ownerId: 'user123' } }
+     * @allow (get) Owner can read their own master document.
+     *   - Request: { auth: { uid: 'user123' }, method: 'get', path: '/databases/(default)/documents/masters/master1' }
+     * @allow (list) Owner can list their own master documents.
+     *   - Request: { auth: { uid: 'user123' }, method: 'list', path: '/databases/(default)/documents/masters' }
+     * @allow (update) Owner can update their own master document.
+     *   - Request: { auth: { uid: 'user123' }, method: 'update', path: '/databases/(default)/documents/masters/master1', data: { status: 'active' } }
+     * @allow (delete) Owner can delete their own master document.
+     *   - Request: { auth: { uid: 'user123' }, method: 'delete', path: '/databases/(default)/documents/masters/master1' }
+     * @deny (create) User attempts to create a master document for another user.
+     *   - Request: { auth: { uid: 'user456' }, method: 'create', path: '/databases/(default)/documents/masters/master1', data: { ownerId: 'user123' } }
+     * @deny (get) User attempts to read a master document owned by another user.
+     *   - Request: { auth: { uid: 'user456' }, method: 'get', path: '/databases/(default)/documents/masters/master1' }
+     * @principle Enforces document ownership for all operations.
      */
     match /masters/{masterId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(ownerId) {
+        return request.auth.uid == ownerId;
+      }
+
+      function isExistingOwner(ownerId) {
+        return isOwner(ownerId) && resource != null;
+      }
+
       allow get: if isSignedIn() && isOwner(resource.data.ownerId);
       allow list: if isSignedIn() && isOwner(request.auth.uid);
       allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
-      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
+      allow update: if isExistingOwner(resource.data.ownerId);
+      allow delete: if isExistingOwner(resource.data.ownerId);
     }
 
     /**
-     * @description Controls access to work order documents.
+     * @description Manages work order documents.
      * @path /work-orders/{workOrderId}
-     * @allow (create) Signed-in user with UID 'user123' can create a work order document at /work-orders/workOrder101 with ownerId: 'user123'.
-     * @allow (get, list) Signed-in user with UID 'user123' can read the work order document at /work-orders/workOrder101 if ownerId: 'user123'.
-     * @allow (update, delete) Signed-in user with UID 'user123' can update/delete the work order document at /work-orders/workOrder101 if ownerId: 'user123'.
-     * @deny (create) Signed-in user with UID 'user123' cannot create a work order document at /work-orders/workOrder101 with ownerId: 'anotherUser'.
-     * @deny (get, list, update, delete) Signed-in user with UID 'user123' cannot read/write a work order document at /work-orders/workOrder101 if ownerId: 'anotherUser'.
-     * @principle Enforces document ownership: Only the owner can manage their work orders.
+     * @allow (create) Owner can create a work order document if the ownerId matches their auth.uid.
+     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/work-orders/workOrder1', data: { ownerId: 'user123' } }
+     * @allow (get) Owner can read their own work order document.
+     *   - Request: { auth: { uid: 'user123' }, method: 'get', path: '/databases/(default)/documents/work-orders/workOrder1' }
+     * @allow (list) Owner can list their own work order documents.
+     *   - Request: { auth: { uid: 'user123' }, method: 'list', path: '/databases/(default)/documents/work-orders' }
+     * @allow (update) Owner can update their own work order document.
+     *   - Request: { auth: { uid: 'user123' }, method: 'update', path: '/databases/(default)/documents/work-orders/workOrder1', data: { status: 'active' } }
+     * @allow (delete) Owner can delete their own work order document.
+     *   - Request: { auth: { uid: 'user123' }, method: 'delete', path: '/databases/(default)/documents/work-orders/workOrder1' }
+     * @deny (create) User attempts to create a work order document for another user.
+     *   - Request: { auth: { uid: 'user456' }, method: 'create', path: '/databases/(default)/documents/work-orders/workOrder1', data: { ownerId: 'user123' } }
+     * @deny (get) User attempts to read a work order document owned by another user.
+     *   - Request: { auth: { uid: 'user456' }, method: 'get', path: '/databases/(default)/documents/work-orders/workOrder1' }
+     * @principle Enforces document ownership for all operations.
      */
     match /work-orders/{workOrderId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(ownerId) {
+        return request.auth.uid == ownerId;
+      }
+
+      function isExistingOwner(ownerId) {
+        return isOwner(ownerId) && resource != null;
+      }
+
       allow get: if isSignedIn() && isOwner(resource.data.ownerId);
       allow list: if isSignedIn() && isOwner(request.auth.uid);
       allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
-      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
+      allow update: if isExistingOwner(resource.data.ownerId);
+      allow delete: if isExistingOwner(resource.data.ownerId);
     }
-  }
-
-  // Helper functions
-  function isSignedIn() {
-    return request.auth != null;
-  }
-
-  function isOwner(userId) {
-    return request.auth.uid == userId;
-  }
-
-  function isExistingOwner(userId) {
-    return isOwner(userId) && resource != null;
   }
 }
