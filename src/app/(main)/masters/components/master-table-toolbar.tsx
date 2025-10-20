@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MasterTableViewOptions } from "./master-table-view-options"
 
-import { statuses } from "../data/schema"
+import { statuses, specialties } from "../data/schema"
 import { MasterTableFacetedFilter } from "./master-table-faceted-filter"
 
 interface MasterTableToolbarProps<TData> {
@@ -18,14 +18,14 @@ interface MasterTableToolbarProps<TData> {
 export function MasterTableToolbar<TData>({
   table,
 }: MasterTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0 || table.getState().globalFilter;
+  const isFiltered = table.getState().columnFilters.length > 0 || !!table.getState().globalFilter;
   const { openForm } = table.options.meta as { openForm: () => void };
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Buscar por nombre, email, teléfono..."
+          placeholder="Buscar por nombre, especialidad..."
           value={(table.getState().globalFilter as string) ?? ""}
           onChange={(event) =>
             table.setGlobalFilter(event.target.value)
@@ -39,6 +39,13 @@ export function MasterTableToolbar<TData>({
             options={statuses}
           />
         )}
+        {table.getColumn("specialties") && (
+          <MasterTableFacetedFilter
+            column={table.getColumn("specialties")}
+            title="Especialidad"
+            options={specialties}
+          />
+        )}
         {isFiltered && (
           <Button
             variant="ghost"
@@ -48,7 +55,7 @@ export function MasterTableToolbar<TData>({
             }}
             className="h-8 px-2 lg:px-3"
           >
-            Reset
+            Limpiar
             <X className="ml-2 h-4 w-4" />
           </Button>
         )}

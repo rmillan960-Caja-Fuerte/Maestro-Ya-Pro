@@ -45,6 +45,7 @@ const globalFilterFn: FilterFn<any> = (row, columnId, value, addMeta) => {
       row.original.lastName,
       row.original.email,
       row.original.phone,
+      ...(row.original.specialties || []),
     ].filter(Boolean).join(" ").toLowerCase();
 
     return rowValues.includes(String(value).toLowerCase());
