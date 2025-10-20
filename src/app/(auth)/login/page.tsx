@@ -12,6 +12,7 @@ import {
   signInWithPopup,
   fetchSignInMethodsForEmail,
 } from 'firebase/auth';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -32,8 +33,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { Loader2 } from 'lucide-react';
+import { ROLES } from '@/lib/permissions';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Por favor, introduce un correo válido.' }),
@@ -76,6 +78,7 @@ export default function LoginPage() {
   const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
@@ -128,7 +131,40 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // **SUPER ADMIN ROLE ASSIGNMENT LOGIC**
+      // This is the key fix. After a successful Google sign-in, we check the user's email.
+      if (user.email === 'rmillan960@gmail.com') {
+        const userRef = doc(firestore, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+
+        const roleToSet = 'SUPER_ADMIN';
+        const roleInfo = ROLES[roleToSet];
+
+        if (!userDoc.exists()) {
+          // If the user doc doesn't exist, create it with the SUPER_ADMIN role.
+          const [firstName, lastName] = user.displayName?.split(' ') || ['Usuario', 'Maestro-Ya'];
+          await setDoc(userRef, {
+            uid: user.uid,
+            email: user.email,
+            firstName: firstName,
+            lastName: lastName,
+            role: roleToSet,
+            permissions: roleInfo.permissions,
+            createdAt: serverTimestamp(),
+            isActive: true,
+            photoUrl: user.photoURL || `https://avatar.vercel.sh/${user.email}.png`
+          });
+          console.log('Super Admin profile created.');
+        } else if (userDoc.data()?.role !== roleToSet) {
+          // If the doc exists but the role is not SUPER_ADMIN, update it.
+          await setDoc(userRef, { role: roleToSet, permissions: roleInfo.permissions }, { merge: true });
+          console.log('Super Admin role has been assigned/verified.');
+        }
+      }
+
       toast({
         title: 'Inicio de sesión exitoso',
         description: 'Bienvenido con tu cuenta de Google.',
