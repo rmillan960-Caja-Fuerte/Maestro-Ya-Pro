@@ -1,7 +1,105 @@
 {
-  "entities": {},
-  "auth": {
-    "providers": ["password", "anonymous"]
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string" },
+        "permissions": { "type": "array", "items": { "type": "string" } },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "photoUrl": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["uid", "email", "role", "firstName", "lastName"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Represents a client.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "type": { "type": "string", "enum": ["individual", "business"] },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "businessName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "primaryPhone": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive", "pending"] }
+      },
+      "required": ["ownerId", "type", "email", "primaryPhone", "status"]
+    },
+    "Master": {
+      "title": "Master",
+      "description": "Represents a professional/master.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "specialties": { "type": "array", "items": { "type": "string" } },
+        "coverageZones": { "type": "array", "items": { "type": "string" } },
+        "rating": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "inactive", "pending_verification"] },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "url": { "type": "string", "format": "uri" }
+            }
+          }
+        }
+      },
+      "required": ["ownerId", "firstName", "lastName", "email", "phone", "specialties", "status"]
+    },
+    "WorkOrder": {
+      "title": "Work Order",
+      "description": "Represents a work order.",
+      "type": "object",
+      "properties": {
+         "ownerId": { "type": "string" },
+         "orderNumber": { "type": "string" },
+         "clientId": { "type": "string" },
+         "masterId": { "type": "string" },
+         "status": { "type": "string" },
+         "title": { "type": "string" },
+         "total": { "type": "number" },
+         "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "orderNumber", "clientId", "status", "title", "total", "createdAt"]
+    }
   },
-  "firestore": {}
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profile information."
+    },
+    "/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Stores client information."
+    },
+    "/masters/{masterId}": {
+      "schema": { "$ref": "#/entities/Master" },
+      "description": "Stores master/professional information."
+    },
+    "/work-orders/{workOrderId}": {
+      "schema": { "$ref": "#/entities/WorkOrder" },
+      "description": "Stores work order details."
+    }
+  }
 }
