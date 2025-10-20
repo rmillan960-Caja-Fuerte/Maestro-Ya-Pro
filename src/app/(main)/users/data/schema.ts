@@ -4,7 +4,11 @@ import { Timestamp } from "firebase/firestore"
 import { ROLES } from "@/lib/permissions"
 
 export const userProfileSchema = z.object({
-  uid: z.string(),
+  // The 'id' is the document ID from Firestore, which is always present.
+  id: z.string(), 
+  // The 'uid' comes from the auth system and might not always be in the document data.
+  // Making it optional prevents the Zod parsing error.
+  uid: z.string().optional(), 
   email: z.string().email({ message: "Por favor, introduce un correo válido." }),
   role: z.string().min(1, { message: "El rol es obligatorio."}),
   permissions: z.array(z.string()).optional(),
@@ -15,6 +19,7 @@ export const userProfileSchema = z.object({
   isActive: z.boolean().default(true),
   country: z.string().optional().nullable(),
 });
+
 
 export type UserProfile = z.infer<typeof userProfileSchema>
 
