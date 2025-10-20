@@ -18,17 +18,17 @@ interface MasterTableToolbarProps<TData> {
 export function MasterTableToolbar<TData>({
   table,
 }: MasterTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0
+  const isFiltered = table.getState().columnFilters.length > 0 || table.getState().globalFilter;
   const { openForm } = table.options.meta as { openForm: () => void };
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Filtrar por nombre..."
-          value={(table.getColumn("firstName")?.getFilterValue() as string) ?? ""}
+          placeholder="Buscar por nombre, email, teléfono..."
+          value={(table.getState().globalFilter as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("firstName")?.setFilterValue(event.target.value)
+            table.setGlobalFilter(event.target.value)
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
@@ -42,7 +42,10 @@ export function MasterTableToolbar<TData>({
         {isFiltered && (
           <Button
             variant="ghost"
-            onClick={() => table.resetColumnFilters()}
+            onClick={() => {
+              table.resetColumnFilters();
+              table.setGlobalFilter(undefined);
+            }}
             className="h-8 px-2 lg:px-3"
           >
             Reset

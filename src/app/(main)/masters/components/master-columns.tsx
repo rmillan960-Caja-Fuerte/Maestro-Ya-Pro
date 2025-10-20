@@ -37,7 +37,7 @@ export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "firstName",
+    accessorKey: "name",
     header: ({ column }) => (
       <MasterTableColumnHeader column={column} title="Nombre Completo" />
     ),
@@ -131,6 +131,13 @@ export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
       )
     },
     filterFn: (row, id, value) => value.includes(row.getValue(id)),
+  },
+  {
+    accessorKey: "globalFilter",
+    // This is a virtual column for global search. It's not rendered.
+    cell: () => null,
+    header: () => null,
+    enableHiding: true,
   },
   {
     id: "actions",

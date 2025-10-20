@@ -18,6 +18,16 @@ interface MasterTableViewOptionsProps<TData> {
   table: Table<TData>
 }
 
+const columnLabels: Record<string, string> = {
+    name: 'Nombre Completo',
+    email: 'Email',
+    phone: 'Teléfono',
+    specialties: 'Especialidades',
+    coverageZones: 'Zonas de Cobertura',
+    rating: 'Rating',
+    status: 'Estado',
+}
+
 export function MasterTableViewOptions<TData>({
   table,
 }: MasterTableViewOptionsProps<TData>) {
@@ -50,7 +60,7 @@ export function MasterTableViewOptions<TData>({
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {column.id === 'firstName' ? 'Nombre Completo' : column.id}
+                {columnLabels[column.id] || column.id}
               </DropdownMenuCheckboxItem>
             )
           })}

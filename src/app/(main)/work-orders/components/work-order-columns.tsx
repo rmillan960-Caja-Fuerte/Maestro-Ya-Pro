@@ -84,6 +84,13 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
     },
   },
   {
+    accessorKey: "title",
+    header: ({ column }) => (
+        <WorkOrderTableColumnHeader column={column} title="Título" />
+    ),
+    cell: ({ row }) => <div className="font-medium">{row.getValue("title")}</div>,
+  },
+  {
     accessorKey: "clientName",
     header: ({ column }) => (
       <WorkOrderTableColumnHeader column={column} title="Cliente" />
@@ -149,6 +156,13 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
         const amount = parseFloat(row.getValue("total"));
         return <div className="text-right font-medium">{formatCurrency(amount)}</div>
     },
+  },
+  {
+    accessorKey: "globalFilter",
+    // This is a virtual column for global search. It's not rendered.
+    cell: () => null,
+    header: () => null,
+    enableHiding: true,
   },
   {
     id: "actions",

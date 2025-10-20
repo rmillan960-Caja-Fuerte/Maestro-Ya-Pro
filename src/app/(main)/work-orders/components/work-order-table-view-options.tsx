@@ -20,6 +20,7 @@ interface WorkOrderTableViewOptionsProps<TData> {
 
 const columnLabels: Record<string, string> = {
     orderNumber: 'Nro. Orden',
+    title: 'Título',
     clientName: 'Cliente',
     masterName: 'Maestro',
     createdAt: 'Fecha Creación',
@@ -68,5 +69,3 @@ export function WorkOrderTableViewOptions<TData>({
     </DropdownMenu>
   )
 }
-
-    

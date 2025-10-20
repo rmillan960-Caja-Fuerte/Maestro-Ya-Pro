@@ -5,6 +5,8 @@ import * as React from "react"
 import {
   ColumnDef,
   ColumnFiltersState,
+  FilterFn,
+  getGlobalFilteredRowModel,
   SortingState,
   VisibilityState,
   flexRender,
@@ -38,17 +40,29 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
 }
 
+const globalFilterFn: FilterFn<any> = (row, columnId, value, addMeta) => {
+    const rowValues = [
+      row.original.firstName,
+      row.original.lastName,
+      row.original.email,
+      row.original.phone,
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    return rowValues.includes(String(value).toLowerCase());
+};
+
 export function MasterTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>({ globalFilter: false, name: false })
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
+  const [globalFilter, setGlobalFilter] = React.useState('');
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedMaster, setSelectedMaster] = React.useState<z.infer<typeof masterSchema> | null>(null);
 
@@ -98,11 +112,13 @@ export function MasterTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns,
+    globalFilterFn,
     state: {
       sorting,
       columnVisibility,
       rowSelection,
       columnFilters,
+      globalFilter,
     },
     meta: {
       openForm: (master?: z.infer<typeof masterSchema>) => {
@@ -110,6 +126,7 @@ export function MasterTable<TData, TValue>({
         setIsFormOpen(true);
       }
     },
+    onGlobalFilterChange: setGlobalFilter,
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -121,6 +138,7 @@ export function MasterTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getGlobalFilteredRowModel: getGlobalFilteredRowModel(),
   })
 
   return (

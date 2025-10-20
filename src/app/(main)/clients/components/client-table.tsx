@@ -16,6 +16,8 @@ import {
   getSortedRowModel,
   useReactTable,
   Table as ReactTable,
+  getGlobalFilteredRowModel,
+  FilterFn,
 } from "@tanstack/react-table"
 
 import {
@@ -43,17 +45,31 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
 }
 
+const globalFilterFn: FilterFn<any> = (row, columnId, value, addMeta) => {
+    const rowValues = [
+      row.original.firstName,
+      row.original.lastName,
+      row.original.businessName,
+      row.original.email,
+      row.original.primaryPhone,
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    return rowValues.includes(String(value).toLowerCase());
+};
+
+
 export function ClientTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>({ globalFilter: false, name: false })
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
+  const [globalFilter, setGlobalFilter] = React.useState('');
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedClient, setSelectedClient] = React.useState<z.infer<typeof clientSchema> | null>(null);
 
@@ -118,11 +134,13 @@ export function ClientTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns,
+    globalFilterFn,
     state: {
       sorting,
       columnVisibility,
       rowSelection,
       columnFilters,
+      globalFilter,
     },
     meta: {
       openForm: (client?: z.infer<typeof clientSchema>) => {
@@ -130,6 +148,7 @@ export function ClientTable<TData, TValue>({
         setIsFormOpen(true);
       }
     },
+    onGlobalFilterChange: setGlobalFilter,
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -141,6 +160,7 @@ export function ClientTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getGlobalFilteredRowModel: getGlobalFilteredRowModel(),
   })
 
 

@@ -16,6 +16,7 @@ import {
   getSortedRowModel,
   useReactTable,
   FilterFn,
+  getGlobalFilteredRowModel,
 } from "@tanstack/react-table"
 import {
   Table,
@@ -62,6 +63,17 @@ const dateBetweenFilterFn: FilterFn<any> = (row, columnId, value, addMeta) => {
   return rowTime >= startTime && rowTime <= endTime;
 };
 
+const globalFilterFn: FilterFn<any> = (row, columnId, value, addMeta) => {
+    const rowValues = [
+      row.original.clientName,
+      row.original.masterName,
+      row.original.orderNumber,
+      row.original.title,
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    return rowValues.includes(String(value).toLowerCase());
+};
+
 export function WorkOrderTable<TData, TValue>({
   columns,
   data,
@@ -72,11 +84,14 @@ export function WorkOrderTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>({ globalFilter: false, title: false })
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: 'createdAt', desc: true }
+  ])
+  const [globalFilter, setGlobalFilter] = React.useState('');
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedWorkOrder, setSelectedWorkOrder] = React.useState<z.infer<typeof workOrderSchema> | null>(null);
   
@@ -145,15 +160,18 @@ export function WorkOrderTable<TData, TValue>({
     filterFns: {
         dateBetween: dateBetweenFilterFn,
     },
+    globalFilterFn,
     state: {
       sorting,
       columnVisibility,
       rowSelection,
       columnFilters,
+      globalFilter,
     },
     meta: {
       openForm: (workOrder?: z.infer<typeof workOrderSchema>) => openForm(workOrder)
     },
+    onGlobalFilterChange: setGlobalFilter,
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -165,6 +183,7 @@ export function WorkOrderTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getGlobalFilteredRowModel: getGlobalFilteredRowModel(),
   })
 
   return (

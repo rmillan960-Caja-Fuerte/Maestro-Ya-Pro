@@ -18,17 +18,17 @@ interface ClientTableToolbarProps<TData> {
 export function ClientTableToolbar<TData>({
   table,
 }: ClientTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0
+  const isFiltered = table.getState().columnFilters.length > 0 || table.getState().globalFilter;
   const { openForm } = table.options.meta as { openForm: () => void };
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Filtrar por nombre..."
-          value={(table.getColumn("businessName")?.getFilterValue() as string) ?? ""}
+          placeholder="Buscar por nombre, email, teléfono..."
+          value={(table.getState().globalFilter as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("businessName")?.setFilterValue(event.target.value)
+            table.setGlobalFilter(event.target.value)
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
@@ -49,7 +49,10 @@ export function ClientTableToolbar<TData>({
         {isFiltered && (
           <Button
             variant="ghost"
-            onClick={() => table.resetColumnFilters()}
+            onClick={() => {
+              table.resetColumnFilters()
+              table.setGlobalFilter(undefined);
+            }}
             className="h-8 px-2 lg:px-3"
           >
             Reset

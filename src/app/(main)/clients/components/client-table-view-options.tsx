@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu"
@@ -15,6 +16,14 @@ import {
 
 interface ClientTableViewOptionsProps<TData> {
   table: Table<TData>
+}
+
+const columnLabels: Record<string, string> = {
+    name: 'Nombre / Razón Social',
+    email: 'Email',
+    primaryPhone: 'Teléfono',
+    status: 'Estado',
+    type: 'Tipo',
 }
 
 export function ClientTableViewOptions<TData>({
@@ -49,7 +58,7 @@ export function ClientTableViewOptions<TData>({
                 checked={column.getIsVisible()}
                 onCheckedChange={(value) => column.toggleVisibility(!!value)}
               >
-                {column.id}
+                {columnLabels[column.id] || column.id}
               </DropdownMenuCheckboxItem>
             )
           })}

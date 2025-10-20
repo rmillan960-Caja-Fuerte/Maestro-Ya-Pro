@@ -1,3 +1,4 @@
+
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
@@ -35,7 +36,7 @@ export const columns: ColumnDef<z.infer<typeof clientSchema>>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "businessName",
+    accessorKey: "name",
     header: ({ column }) => (
       <ClientTableColumnHeader column={column} title="Nombre / Razón Social" />
     ),
@@ -110,6 +111,13 @@ export const columns: ColumnDef<z.infer<typeof clientSchema>>[] = [
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id))
     },
+  },
+  {
+    accessorKey: "globalFilter",
+    // This is a virtual column for global search. It's not rendered.
+    cell: () => null,
+    header: () => null,
+    enableHiding: true,
   },
   {
     id: "actions",

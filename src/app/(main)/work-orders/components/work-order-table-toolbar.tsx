@@ -5,7 +5,6 @@ import { Table } from "@tanstack/react-table"
 import { X, PlusCircle } from "lucide-react"
 import { DateRange } from "react-day-picker"
 import { useState, useEffect } from "react"
-import { Timestamp } from "firebase/firestore"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,7 +20,7 @@ interface WorkOrderTableToolbarProps<TData> {
 export function WorkOrderTableToolbar<TData>({
   table,
 }: WorkOrderTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0
+  const isFiltered = table.getState().columnFilters.length > 0 || table.getState().globalFilter;
   const { openForm } = table.options.meta as { openForm: () => void };
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
@@ -43,10 +42,10 @@ export function WorkOrderTableToolbar<TData>({
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Filtrar por cliente..."
-          value={(table.getColumn("clientName")?.getFilterValue() as string) ?? ""}
+          placeholder="Buscar por cliente, título, maestro..."
+          value={(table.getState().globalFilter as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("clientName")?.setFilterValue(event.target.value)
+            table.setGlobalFilter(event.target.value)
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
@@ -63,6 +62,7 @@ export function WorkOrderTableToolbar<TData>({
             variant="ghost"
             onClick={() => {
                 table.resetColumnFilters()
+                table.setGlobalFilter(undefined);
                 setDateRange(undefined)
             }}
             className="h-8 px-2 lg:px-3"
