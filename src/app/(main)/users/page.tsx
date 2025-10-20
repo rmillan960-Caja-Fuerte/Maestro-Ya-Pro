@@ -30,35 +30,58 @@ export default function UsersPage() {
 
   // Redirect if user is not SUPER_ADMIN
   React.useEffect(() => {
-    if (!isAuthLoading && !isProfileLoading && userProfile?.role !== 'SUPER_ADMIN') {
+    if (!isAuthLoading && !isProfileLoading && userProfile && userProfile.role !== 'SUPER_ADMIN') {
         router.replace('/'); // Redirect to a safe page
     }
   }, [userProfile, isAuthLoading, isProfileLoading, router]);
 
 
   const usersQuery = useMemoFirebase(() => {
+    // Only execute the query if we have confirmed the user is a SUPER_ADMIN
     if (!firestore || !user?.uid || !userProfile || userProfile.role !== 'SUPER_ADMIN') return null;
     return query(collection(firestore, 'users'));
   }, [firestore, user?.uid, userProfile]);
 
-  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, !!userProfile && userProfile.role === 'SUPER_ADMIN');
+  // The hook will not run if usersQuery is null.
+  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, !!(userProfile && userProfile.role === 'SUPER_ADMIN'));
 
-  const isLoading = isAuthLoading || isProfileLoading || (user && isDataLoading);
+  const isLoading = isAuthLoading || isProfileLoading || (!!user && isDataLoading);
   
-  // Render nothing or a loading state until redirection check is complete
-  if (!userProfile || userProfile.role !== 'SUPER_ADMIN') {
+  // Render nothing or a loading state until redirection check is complete and role is confirmed
+  if (isAuthLoading || isProfileLoading || !userProfile) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Acceso Denegado</CardTitle>
-                <CardDescription>No tienes permiso para ver esta página.</CardDescription>
+                <CardTitle>Gestión de Usuarios</CardTitle>
+                <CardDescription>Verificando permisos...</CardDescription>
             </CardHeader>
             <CardContent>
-                <p>Serás redirigido a la página principal.</p>
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <Skeleton className="h-8 w-[250px]" />
+                    </div>
+                    <div className="rounded-md border">
+                        <div className="space-y-2 p-4">
+                            <Skeleton className="h-6 w-full" />
+                        </div>
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );
   }
+
+  if (userProfile.role !== 'SUPER_ADMIN') {
+     return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Acceso Denegado</CardTitle>
+                <CardDescription>No tienes permiso para ver esta página. Serás redirigido.</CardDescription>
+            </CardHeader>
+        </Card>
+    );
+  }
+
 
   return (
     <Card>

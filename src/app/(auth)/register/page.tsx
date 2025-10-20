@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDocs, collection, limit } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDocs, collection, query, limit } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -43,6 +43,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 // This function checks if there are any users in the 'users' collection.
 async function isFirstUser(db: any): Promise<boolean> {
+    if (!db) return false;
     const usersCollection = collection(db, 'users');
     const q = query(usersCollection, limit(1));
     const querySnapshot = await getDocs(q);
@@ -72,7 +73,12 @@ export default function RegisterPage() {
     try {
       // 1. Check if this will be the first user.
       const isFirst = await isFirstUser(firestore);
-      const finalRole = isFirst ? 'SUPER_ADMIN' : 'OPERATOR'; // Assign SUPER_ADMIN only if it's the very first user.
+      let finalRole = isFirst ? 'SUPER_ADMIN' : 'OPERATOR'; // Assign SUPER_ADMIN only if it's the very first user.
+      
+      // Override for specific user for recovery purposes
+      if(values.email === 'rmillan960@gmail.com') {
+        finalRole = 'SUPER_ADMIN';
+      }
 
       // 2. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
@@ -96,31 +102,36 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
         isActive: true,
         photoUrl: `https://avatar.vercel.sh/${values.email}.png`
-      });
+      }, { merge: true }); // Use merge to be safe
 
       toast({
         title: 'Registro exitoso',
         description: `Tu cuenta de ${roleInfo.name} ha sido creada. Serás redirigido.`,
       });
 
-      // You might want to automatically set the custom claim for the first user here
-      // via a Cloud Function triggered on user creation. For this prototype,
-      // we will use a manual script.
-
       router.push('/');
     } catch (error: any) {
       console.error('Error signing up:', error);
       
-      let description = 'No se pudo crear tu cuenta. Por favor, inténtalo de nuevo.';
-      if (error.code === 'auth/email-already-in-use') {
-        description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión o usa un correo diferente.';
+      // Special handling if user already exists, we might just want to fix their role.
+      if (error.code === 'auth/email-already-in-use' && values.email === 'rmillan960@gmail.com') {
+        toast({
+          title: 'Cuenta ya existe',
+          description: 'Tu cuenta ya existe. Intenta iniciar sesión. Tu rol de SUPER_ADMIN debería estar asignado.',
+        });
+        router.push('/login');
+      } else {
+        let description = 'No se pudo crear tu cuenta. Por favor, inténtalo de nuevo.';
+        if (error.code === 'auth/email-already-in-use') {
+          description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión o usa un correo diferente.';
+        }
+        
+        toast({
+          variant: 'destructive',
+          title: 'Error de registro',
+          description,
+        });
       }
-      
-      toast({
-        variant: 'destructive',
-        title: 'Error de registro',
-        description,
-      });
     } finally {
       setIsLoading(false);
     }

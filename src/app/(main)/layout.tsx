@@ -34,6 +34,8 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+  // This outer component can remain a Server Component if it doesn't use client hooks.
+  // We wrap the part that uses hooks in a 'use client' component.
   return (
     <MainLayoutContent>
       {children}

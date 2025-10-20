@@ -1,59 +1,33 @@
 /**
- * @fileoverview Firestore Security Rules for Prototyping.
+ * @fileoverview Firestore Security Rules for the application.
  *
  * Core Philosophy:
- * This ruleset prioritizes strict authorization based on user identity and
- * document ownership while keeping data-shape validation flexible. This
- * allows for rapid iteration on the data model without sacrificing security.
+ * This ruleset enforces a multi-tenant data model where users (represented by their unique Firebase Authentication UIDs) primarily own and control the data they create. A "super admin" role is supported which bypasses ownership checks.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information. Only the authenticated
- *   user can read or write their own profile.
- * - /clients/{clientId}: Stores client information. Only the owner (based on ownerId)
- *   can create, read, update, or delete client documents.
- * - /masters/{masterId}: Stores professional/master information. Only the owner
- *   (based on ownerId) can create, read, update, or delete master documents.
- * - /work-orders/{workOrderId}: Stores work order details. Only the owner
- *   (based on ownerId) can create, read, update, or delete work order documents.
+ * - /users/{userId}: Stores user profile information. Access is restricted to the owning user and super admins.
+ * - /clients/{clientId}: Stores client information. Access is restricted to the owning user and super admins.
+ * - /masters/{masterId}: Stores professional/master information. Access is restricted to the owning user and super admins.
+ * - /work-orders/{workOrderId}: Stores work order details. Access is restricted to the owning user and super admins.
  *
  * Key Security Decisions:
- * - User listing is explicitly denied to protect user privacy.
- * - Data-shape validation is minimized to allow for flexible prototyping. Only
- *   authorization-critical fields (e.g., ownerId) are validated.
- * - All write operations are protected by authorization checks to prevent
- *   unauthorized data modification or deletion.
- *
- * Denormalization for Authorization:
- * - The 'Client', 'Master', and 'WorkOrder' entities all have an 'ownerId' field.
- *   This denormalization allows the security rules to quickly verify ownership
- *   without needing to perform additional reads.
- *
- * Structural Segregation:
- * - Public and private data are stored in separate collections to simplify
- *   security rules and improve performance.
+ * - User data is strictly private; listing all users is disallowed.
+ * - The `ownerId` field in `Client`, `Master`, and `WorkOrder` documents is used to enforce ownership.
+ * - A `superAdmin` role, if present in the user's profile, bypasses all ownership checks, granting full read/write access.
+ * - Schema validation is relaxed in this prototyping phase, focusing only on authorization and relational integrity.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Protects user profile information.
+     * @description Manages user profile information.
      * @path /users/{userId}
-     * @allow (get) Authenticated user can read their own profile.
-     *   - Request: { auth: { uid: 'user123' }, method: 'get', path: '/databases/(default)/documents/users/user123' }
-     * @allow (create) Authenticated user can create their profile if the userId matches their auth.uid.
-     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/users/user123', data: { uid: 'user123' } }
-     * @allow (update) Authenticated user can update their own profile.
-     *   - Request: { auth: { uid: 'user123' }, method: 'update', path: '/databases/(default)/documents/users/user123', data: { firstName: 'New Name' } }
-     * @allow (delete) Authenticated user can delete their own profile.
-     *   - Request: { auth: { uid: 'user123' }, method: 'delete', path: '/databases/(default)/documents/users/user123' }
-     * @deny (get) User attempts to read another user's profile.
-     *   - Request: { auth: { uid: 'user456' }, method: 'get', path: '/databases/(default)/documents/users/user123' }
-     * @deny (create) User attempts to create a profile with a mismatched userId.
-     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/users/user456', data: { uid: 'user456' } }
+     * @allow (create) User with matching UID can create their profile.
+     * @allow (get, update, delete) User with matching UID or super admin can access/modify their profile.
+     * @deny (create) User trying to create a profile with a different UID.
      * @deny (list) Listing all users is not allowed.
-     *   - Request: { auth: { uid: 'user123' }, method: 'list', path: '/databases/(default)/documents/users' }
-     * @principle Enforces document ownership for writes.
+     * @principle Enforces user ownership for profile data and restricts listing.
      */
     match /users/{userId} {
       function isSignedIn() {
@@ -64,132 +38,127 @@ service cloud.firestore {
         return request.auth.uid == userId;
       }
 
+      function isSuperAdmin() {
+        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
+      }
+      
       function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+          return isOwner(userId) && resource != null;
       }
 
-      allow get: if isOwner(userId);
+      allow get: if isSignedIn() && (isOwner(userId) || isSuperAdmin());
       allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isExistingOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() && (isOwner(userId) || isSuperAdmin());
+      allow delete: if isSignedIn() && (isOwner(userId) || isSuperAdmin());
     }
 
     /**
-     * @description Manages client documents.
+     * @description Manages client information.
      * @path /clients/{clientId}
-     * @allow (create) Owner can create a client document if the ownerId matches their auth.uid.
-     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/clients/client1', data: { ownerId: 'user123' } }
-     * @allow (get) Owner can read their own client document.
-     *   - Request: { auth: { uid: 'user123' }, method: 'get', path: '/databases/(default)/documents/clients/client1' }
-     * @allow (list) Owner can list their own client documents.
-     *   - Request: { auth: { uid: 'user123' }, method: 'list', path: '/databases/(default)/documents/clients' }
-     * @allow (update) Owner can update their own client document.
-     *   - Request: { auth: { uid: 'user123' }, method: 'update', path: '/databases/(default)/documents/clients/client1', data: { status: 'active' } }
-     * @allow (delete) Owner can delete their own client document.
-     *   - Request: { auth: { uid: 'user123' }, method: 'delete', path: '/databases/(default)/documents/clients/client1' }
-     * @deny (create) User attempts to create a client document for another user.
-     *   - Request: { auth: { uid: 'user456' }, method: 'create', path: '/databases/(default)/documents/clients/client1', data: { ownerId: 'user123' } }
-     * @deny (get) User attempts to read a client document owned by another user.
-     *   - Request: { auth: { uid: 'user456' }, method: 'get', path: '/databases/(default)/documents/clients/client1' }
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User can create a client and assign themselves as the owner.
+     * @allow (get, list, update, delete) Owner or super admin can access/modify client data.
+     * @deny (create) User trying to create a client with a different ownerId.
+     * @principle Enforces document ownership for client records.
      */
     match /clients/{clientId} {
       function isSignedIn() {
         return request.auth != null;
       }
 
-      function isOwner(ownerId) {
-        return request.auth.uid == ownerId;
+      function isOwner() {
+        return request.auth.uid == resource.data.ownerId;
       }
 
-      function isExistingOwner(ownerId) {
-        return isOwner(ownerId) && resource != null;
+      function isCreatingOwner() {
+        return request.auth.uid == request.resource.data.ownerId;
       }
 
-      allow get: if isSignedIn() && isOwner(resource.data.ownerId);
-      allow list: if isSignedIn() && isOwner(request.auth.uid);
-      allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
+      function isSuperAdmin() {
+        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
+      }
+      
+      function isExistingOwner() {
+          return request.auth.uid == resource.data.ownerId && resource != null;
+      }
+
+      allow get: if isSignedIn() && (isOwner() || isSuperAdmin());
+      allow list: if isSignedIn() && (isOwner() || isSuperAdmin());
+      allow create: if isSignedIn() && isCreatingOwner();
+      allow update: if isSignedIn() && (isOwner() || isSuperAdmin());
+      allow delete: if isSignedIn() && (isOwner() || isSuperAdmin());
     }
 
     /**
-     * @description Manages master documents.
+     * @description Manages master/professional information.
      * @path /masters/{masterId}
-     * @allow (create) Owner can create a master document if the ownerId matches their auth.uid.
-     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/masters/master1', data: { ownerId: 'user123' } }
-     * @allow (get) Owner can read their own master document.
-     *   - Request: { auth: { uid: 'user123' }, method: 'get', path: '/databases/(default)/documents/masters/master1' }
-     * @allow (list) Owner can list their own master documents.
-     *   - Request: { auth: { uid: 'user123' }, method: 'list', path: '/databases/(default)/documents/masters' }
-     * @allow (update) Owner can update their own master document.
-     *   - Request: { auth: { uid: 'user123' }, method: 'update', path: '/databases/(default)/documents/masters/master1', data: { status: 'active' } }
-     * @allow (delete) Owner can delete their own master document.
-     *   - Request: { auth: { uid: 'user123' }, method: 'delete', path: '/databases/(default)/documents/masters/master1' }
-     * @deny (create) User attempts to create a master document for another user.
-     *   - Request: { auth: { uid: 'user456' }, method: 'create', path: '/databases/(default)/documents/masters/master1', data: { ownerId: 'user123' } }
-     * @deny (get) User attempts to read a master document owned by another user.
-     *   - Request: { auth: { uid: 'user456' }, method: 'get', path: '/databases/(default)/documents/masters/master1' }
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User can create a master profile and assign themselves as the owner.
+     * @allow (get, list, update, delete) Owner or super admin can access/modify master data.
+     * @deny (create) User trying to create a master profile with a different ownerId.
+     * @principle Enforces document ownership for master records.
      */
     match /masters/{masterId} {
       function isSignedIn() {
         return request.auth != null;
       }
 
-      function isOwner(ownerId) {
-        return request.auth.uid == ownerId;
+      function isOwner() {
+        return request.auth.uid == resource.data.ownerId;
       }
 
-      function isExistingOwner(ownerId) {
-        return isOwner(ownerId) && resource != null;
+      function isCreatingOwner() {
+        return request.auth.uid == request.resource.data.ownerId;
       }
 
-      allow get: if isSignedIn() && isOwner(resource.data.ownerId);
-      allow list: if isSignedIn() && isOwner(request.auth.uid);
-      allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
+      function isSuperAdmin() {
+        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
+      }
+      
+      function isExistingOwner() {
+          return request.auth.uid == resource.data.ownerId && resource != null;
+      }
+
+      allow get: if isSignedIn() && (isOwner() || isSuperAdmin());
+      allow list: if isSignedIn() && (isOwner() || isSuperAdmin());
+      allow create: if isSignedIn() && isCreatingOwner();
+      allow update: if isSignedIn() && (isOwner() || isSuperAdmin());
+      allow delete: if isSignedIn() && (isOwner() || isSuperAdmin());
     }
 
     /**
-     * @description Manages work order documents.
+     * @description Manages work order details.
      * @path /work-orders/{workOrderId}
-     * @allow (create) Owner can create a work order document if the ownerId matches their auth.uid.
-     *   - Request: { auth: { uid: 'user123' }, method: 'create', path: '/databases/(default)/documents/work-orders/workOrder1', data: { ownerId: 'user123' } }
-     * @allow (get) Owner can read their own work order document.
-     *   - Request: { auth: { uid: 'user123' }, method: 'get', path: '/databases/(default)/documents/work-orders/workOrder1' }
-     * @allow (list) Owner can list their own work order documents.
-     *   - Request: { auth: { uid: 'user123' }, method: 'list', path: '/databases/(default)/documents/work-orders' }
-     * @allow (update) Owner can update their own work order document.
-     *   - Request: { auth: { uid: 'user123' }, method: 'update', path: '/databases/(default)/documents/work-orders/workOrder1', data: { status: 'active' } }
-     * @allow (delete) Owner can delete their own work order document.
-     *   - Request: { auth: { uid: 'user123' }, method: 'delete', path: '/databases/(default)/documents/work-orders/workOrder1' }
-     * @deny (create) User attempts to create a work order document for another user.
-     *   - Request: { auth: { uid: 'user456' }, method: 'create', path: '/databases/(default)/documents/work-orders/workOrder1', data: { ownerId: 'user123' } }
-     * @deny (get) User attempts to read a work order document owned by another user.
-     *   - Request: { auth: { uid: 'user456' }, method: 'get', path: '/databases/(default)/documents/work-orders/workOrder1' }
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User can create a work order and assign themselves as the owner.
+     * @allow (get, list, update, delete) Owner or super admin can access/modify work order data.
+     * @deny (create) User trying to create a work order with a different ownerId.
+     * @principle Enforces document ownership for work order records.
      */
     match /work-orders/{workOrderId} {
       function isSignedIn() {
         return request.auth != null;
       }
 
-      function isOwner(ownerId) {
-        return request.auth.uid == ownerId;
+      function isOwner() {
+        return request.auth.uid == resource.data.ownerId;
       }
 
-      function isExistingOwner(ownerId) {
-        return isOwner(ownerId) && resource != null;
+      function isCreatingOwner() {
+        return request.auth.uid == request.resource.data.ownerId;
       }
 
-      allow get: if isSignedIn() && isOwner(resource.data.ownerId);
-      allow list: if isSignedIn() && isOwner(request.auth.uid);
-      allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
+      function isSuperAdmin() {
+        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
+      }
+      
+      function isExistingOwner() {
+          return request.auth.uid == resource.data.ownerId && resource != null;
+      }
+
+      allow get: if isSignedIn() && (isOwner() || isSuperAdmin());
+      allow list: if isSignedIn() && (isOwner() || isSuperAdmin());
+      allow create: if isSignedIn() && isCreatingOwner();
+      allow update: if isSignedIn() && (isOwner() || isSuperAdmin());
+      allow delete: if isSignedIn() && (isOwner() || isSuperAdmin());
     }
   }
 }
