@@ -3,7 +3,7 @@
 
 import { useMemo } from 'react';
 import { collection } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 
 import { columns } from './components/client-columns';
 import { ClientTable } from './components/client-table';
@@ -19,13 +19,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ClientsPage() {
   const firestore = useFirestore();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   
   const clientsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    // Wait until the user is authenticated before creating the query.
+    if (!firestore || !user) return null;
     return collection(firestore, 'clients');
-  }, [firestore]);
+  }, [firestore, user]);
 
-  const { data: clients, isLoading } = useCollection<Client>(clientsQuery);
+  const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery);
+
+  const isLoading = isAuthLoading || (user && isDataLoading);
 
   return (
     <Card>

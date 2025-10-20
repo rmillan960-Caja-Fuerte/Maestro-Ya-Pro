@@ -36,10 +36,20 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { usePathname } from 'next/navigation';
 import { Logo } from '../logo';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/firebase';
 
 export default function AppHeader() {
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
   const pathname = usePathname();
+  const auth = useAuth();
+
+
+  const handleLogout = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (auth) {
+      auth.signOut();
+    }
+  }
 
   const breadcrumbItems = React.useMemo(() => {
     const pathParts = pathname.split('/').filter(part => part);
@@ -106,10 +116,10 @@ export default function AppHeader() {
             {userAvatar && (
               <Image
                 src={userAvatar.imageUrl}
-                width={36}
-                height={36}
+                fill
                 alt="Avatar"
-                className="overflow-hidden rounded-full"
+                className="object-cover"
+                sizes="36px"
                 data-ai-hint={userAvatar.imageHint}
               />
             )}
@@ -137,7 +147,7 @@ export default function AppHeader() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={handleLogout}>
             <Link href="/login" className="flex items-center w-full">
               <LogOut className="mr-2 h-4 w-4" />
               Cerrar Sesión
