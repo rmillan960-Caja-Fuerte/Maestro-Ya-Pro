@@ -25,7 +25,7 @@ export default function MastersPage() {
     return query(collection(firestore, 'masters'), where('ownerId', '==', user.uid));
   }, [firestore, user?.uid]);
 
-  const { data: masters, isLoading: isDataLoading } = useCollection<Master>(mastersQuery);
+  const { data: masters, isLoading: isDataLoading } = useCollection<Master>(mastersQuery, !!user);
 
   const isLoading = isAuthLoading || (user && isDataLoading);
 

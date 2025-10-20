@@ -46,9 +46,9 @@ export default function WorkOrdersPage() {
   );
 
   // 2. Fetch data from all collections in parallel. useCollection will handle null queries.
-  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery);
-  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
-  const { data: masters, isLoading: isLoadingMasters } = useCollection<Master>(mastersQuery);
+  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!user);
+  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery, !!user);
+  const { data: masters, isLoading: isLoadingMasters } = useCollection<Master>(mastersQuery, !!user);
 
   // Determine the overall loading state
   const isLoading = isAuthLoading || (user && (isLoadingWorkOrders || isLoadingClients || isLoadingMasters));

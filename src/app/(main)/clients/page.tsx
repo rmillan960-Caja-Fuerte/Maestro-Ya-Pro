@@ -27,7 +27,7 @@ export default function ClientsPage() {
   }, [firestore, user?.uid]); 
 
   // `useCollection` manejará internamente el caso `null` y no ejecutará la consulta.
-  const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery);
+  const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery, !!user);
 
   // La carga está completa solo cuando la autenticación ha terminado y, si hay un usuario, los datos se han cargado.
   const isLoading = isAuthLoading || (user && isDataLoading);
