@@ -20,6 +20,7 @@ export const workOrderPaymentSchema = z.object({
 
 export const workOrderSchema = z.object({
   id: z.string(),
+  ownerId: z.string(),
   orderNumber: z.string(),
   clientId: z.string({ required_error: "El cliente es obligatorio." }),
   clientName: z.string().optional(),
@@ -59,7 +60,7 @@ export const workOrderSchema = z.object({
   updatedAt: z.union([z.instanceof(Timestamp), z.string()]).optional(),
   scheduledDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
   completionDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
-  warrantyEndDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
+  warrantyEndDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), zstring()]).optional(),
   relatedOrderId: z.string().optional(),
 })
 

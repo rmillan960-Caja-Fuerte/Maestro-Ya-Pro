@@ -47,6 +47,7 @@ import { es } from 'date-fns/locale';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
 
 const formSchema = workOrderSchema.omit({ 
     id: true, 
@@ -93,10 +94,12 @@ const StarRating = ({ value, onValueChange }: { value: number, onValueChange: (v
 export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, clients, masters }: WorkOrderFormDialogProps) {
   const [isSaving, setIsSaving] = React.useState(false);
   const { toast } = useToast();
+  const { user } = useUser();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      ownerId: '',
       clientId: '',
       title: '',
       status: 'draft',
@@ -139,6 +142,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
         const defaultValues: FormValues = workOrder 
         ? {
             ...workOrder,
+            ownerId: workOrder.ownerId || user?.uid || '',
             scheduledDate: workOrder.scheduledDate ? (workOrder.scheduledDate instanceof Timestamp ? workOrder.scheduledDate.toDate() : new Date(workOrder.scheduledDate)) : undefined,
             completionDate: workOrder.completionDate ? (workOrder.completionDate instanceof Timestamp ? workOrder.completionDate.toDate() : new Date(workOrder.completionDate)) : undefined,
             warrantyEndDate: workOrder.warrantyEndDate ? (workOrder.warrantyEndDate instanceof Timestamp ? workOrder.warrantyEndDate.toDate() : new Date(workOrder.warrantyEndDate)) : undefined,
@@ -148,6 +152,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             category: workOrder.category || '',
           }
         : {
+            ownerId: user?.uid || '',
             clientId: '',
             title: '',
             status: 'draft',
@@ -167,7 +172,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
         };
         form.reset(defaultValues);
     }
-  }, [isOpen, workOrder, form]);
+  }, [isOpen, workOrder, form, user]);
 
   React.useEffect(() => {
     const subtotal = items?.reduce((acc, item) => acc + (item.quantity * item.unitPrice || 0), 0) || 0;

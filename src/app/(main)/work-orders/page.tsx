@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import {
   Card,
@@ -25,15 +25,15 @@ export default function WorkOrdersPage() {
 
   // 1. Define stable queries for all needed collections
   const workOrdersQuery = useMemoFirebase(() => 
-    !firestore || !user ? null : query(collection(firestore, 'work-orders'), orderBy('createdAt', 'desc')),
+    !firestore || !user ? null : query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')),
     [firestore, user?.uid]
   );
   const clientsQuery = useMemoFirebase(() => 
-    !firestore || !user ? null : collection(firestore, 'clients'),
+    !firestore || !user ? null : query(collection(firestore, 'clients'), where('ownerId', '==', user.uid)),
     [firestore, user?.uid]
   );
   const mastersQuery = useMemoFirebase(() => 
-    !firestore || !user ? null : collection(firestore, 'masters'),
+    !firestore || !user ? null : query(collection(firestore, 'masters')),
     [firestore, user?.uid]
   );
 

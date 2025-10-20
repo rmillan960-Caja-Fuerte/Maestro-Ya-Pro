@@ -36,7 +36,7 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import type { ChartConfig } from '@/components/ui/chart';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, where, Timestamp } from 'firebase/firestore';
 import { type WorkOrder } from './work-orders/data/schema';
 import { type Client } from './clients/data/schema';
@@ -63,15 +63,16 @@ const ordersChartConfig: ChartConfig = specialties.reduce((acc, specialty, index
 
 export default function DashboardPage() {
   const firestore = useFirestore();
+  const { user } = useUser();
 
   // Queries
   const workOrdersQuery = useMemoFirebase(() => 
-    !firestore ? null : query(collection(firestore, 'work-orders'), orderBy('createdAt', 'desc')),
-    [firestore]
+    !firestore || !user ? null : query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')),
+    [firestore, user?.uid]
   );
   const clientsQuery = useMemoFirebase(() => 
-    !firestore ? null : collection(firestore, 'clients'),
-    [firestore]
+    !firestore || !user ? null : query(collection(firestore, 'clients'), where('ownerId', '==', user.uid)),
+    [firestore, user?.uid]
   );
 
   // Data fetching

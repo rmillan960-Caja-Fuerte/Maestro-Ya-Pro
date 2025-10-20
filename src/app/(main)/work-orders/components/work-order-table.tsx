@@ -27,7 +27,7 @@ import {
 import { WorkOrderTableToolbar } from "./work-order-table-toolbar"
 import { WorkOrderTablePagination } from "./work-order-table-pagination"
 import { doc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore"
-import { useFirestore } from "@/firebase"
+import { useFirestore, useUser } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { workOrderSchema, type WorkOrder } from "../data/schema"
 import { generateOrderNumber } from "@/lib/utils"
@@ -63,6 +63,7 @@ export function WorkOrderTable<TData, TValue>({
   const [selectedWorkOrder, setSelectedWorkOrder] = React.useState<z.infer<typeof workOrderSchema> | null>(null);
   
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const handleSaveWorkOrder = async (workOrderData: Omit<WorkOrder, 'id' | 'orderNumber' | 'createdAt'>) => {
@@ -77,9 +78,11 @@ export function WorkOrderTable<TData, TValue>({
         });
       } else {
         // Create new work order
+        if (!user) throw new Error("Usuario no autenticado.");
         const newOrderNumber = generateOrderNumber(workOrdersCount);
         const newWorkOrder = {
           ...workOrderData,
+          ownerId: user.uid,
           orderNumber: newOrderNumber,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
