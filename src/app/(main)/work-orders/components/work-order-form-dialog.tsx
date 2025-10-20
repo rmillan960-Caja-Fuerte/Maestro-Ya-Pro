@@ -65,7 +65,7 @@ interface WorkOrderFormDialogProps {
   masters: Master[];
 }
 
-const TAX_RATE = 0.16; // 16% IVA
+const TAX_RATE = 0.15; // 15% IVA
 const MATERIAL_MARKUP_RATE = 0.15; // 15% recargo sobre materiales
 
 export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, clients, masters }: WorkOrderFormDialogProps) {
@@ -317,7 +317,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                         render={({ field }) => (
                                             <FormItem className="flex flex-row items-center gap-2 space-y-0">
                                                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                                <FormLabel className="font-normal text-muted-foreground">Aplicar IVA (16%)</FormLabel>
+                                                <FormLabel className="font-normal text-muted-foreground">Aplicar IVA (15%)</FormLabel>
                                             </FormItem>
                                         )}
                                     />
@@ -468,3 +468,5 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     </Dialog>
   );
 }
+
+    
