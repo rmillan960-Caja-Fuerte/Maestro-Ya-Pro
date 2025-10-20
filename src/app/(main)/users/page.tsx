@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, doc, where } from 'firebase/firestore';
+import { collection, query, doc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import {
   Card,
@@ -31,33 +31,35 @@ export default function UsersPage() {
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
   
-  // The user must be an OWNER to view this page.
-  // This check is now performed using client-side data.
+  // Client-side check to see if the user has the OWNER role.
+  // This is used to decide whether to even attempt the Firestore query.
   const canFetchUsers = !isProfileLoading && userProfile?.role === 'OWNER';
 
   React.useEffect(() => {
-    // Wait until profile is loaded to make a decision
+    // If, after loading, the user is confirmed NOT to be an owner, redirect them.
     if (!isAuthLoading && !isProfileLoading && userProfile && userProfile?.role !== 'OWNER') {
+      console.log("Redirecting non-owner user.");
       router.replace('/');
     }
   }, [isAuthLoading, isProfileLoading, userProfile, router]);
 
 
   const usersQuery = useMemoFirebase(() => {
-    // Only execute the query if we have confirmed the user is a OWNER
+    // Only build the query if we have confirmed the user is an OWNER.
     if (firestore && canFetchUsers) {
       return query(collection(firestore, 'users'));
     }
     return null;
   }, [firestore, canFetchUsers]);
 
-  // The hook will not run if usersQuery is null. `useCollection` has a second argument to enable/disable it.
+  // The hook will not run if usersQuery is null, preventing a permission error for non-owners.
   const { data: users, isLoading: isDataLoading, error } = useCollection<UserProfile>(usersQuery, canFetchUsers);
 
   const isLoading = isAuthLoading || isProfileLoading || (canFetchUsers && isDataLoading);
 
-  // If the user's role is not OWNER, show an access denied message.
-  if (!isAuthLoading && !isProfileLoading && userProfile && userProfile?.role !== 'OWNER') {
+  // While loading, or if the user is a non-owner, we might not have a definitive answer,
+  // so we show a loading state or an empty card until redirection happens.
+  if (!canFetchUsers && !isLoading) {
      return (
         <Card>
             <CardHeader>
@@ -80,9 +82,9 @@ export default function UsersPage() {
         {error && (
             <Alert variant="destructive" className="mb-4">
                 <Terminal className="h-4 w-4" />
-                <AlertTitle>Error de Permisos</AlertTitle>
+                <AlertTitle>Error de Permisos de Firestore</AlertTitle>
                 <AlertDescription>
-                    <p>Las reglas de seguridad de Firestore impidieron la carga de usuarios. Esto es esperado si el usuario no tiene el rol de `OWNER`.</p>
+                    <p>Tus reglas de seguridad impidieron la carga de usuarios. Esto es esperado si tu rol no es `OWNER` o si los Custom Claims no están configurados correctamente en tu proyecto de Firebase para el rol de Propietario.</p>
                     <p className='mt-2 text-xs'>Error: {error.message}</p>
                 </AlertDescription>
             </Alert>

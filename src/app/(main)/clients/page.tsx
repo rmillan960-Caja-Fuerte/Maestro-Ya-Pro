@@ -42,14 +42,14 @@ export default function ClientsPage() {
     
     let q: CollectionReference | Query;
 
+    // The OWNER can see all clients. They can also filter by country.
     if (userProfile.role === 'OWNER') {
-      // Owner can see all clients, or filter by country
       q = collection(firestore, 'clients');
       if (selectedCountry !== 'all') {
         q = query(q, where('country', '==', selectedCountry));
       }
+    // Other roles only see clients they own.
     } else {
-      // Other roles only see the clients they own
       q = query(collection(firestore, 'clients'), where('ownerId', '==', user.uid));
     }
     
