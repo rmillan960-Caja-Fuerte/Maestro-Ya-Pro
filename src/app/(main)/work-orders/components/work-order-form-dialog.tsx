@@ -42,7 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -109,6 +109,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
   const materialsCost = form.watch('materialsCost');
   const applyTax = form.watch('applyTax');
   const payments = form.watch('payments');
+  const completionDate = form.watch('completionDate');
   
   React.useEffect(() => {
     if (isOpen) {
@@ -160,6 +161,15 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     form.setValue('balance', balance);
 
   }, [items, surcharges, materialsProvidedBy, materialsCost, applyTax, payments, form]);
+
+  React.useEffect(() => {
+    if (completionDate) {
+      const newWarrantyEndDate = addDays(new Date(completionDate), 90);
+      form.setValue('warrantyEndDate', newWarrantyEndDate);
+    } else {
+      form.setValue('warrantyEndDate', undefined);
+    }
+  }, [completionDate, form]);
 
 
   const handleSubmit = async (values: FormValues) => {
@@ -489,7 +499,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                             )}
                                         >
                                             {field.value ? (
-                                            format(field.value, "PPP", { locale: es })
+                                            format(new Date(field.value), "PPP", { locale: es })
                                             ) : (
                                             <span>Selecciona una fecha</span>
                                             )}
@@ -516,7 +526,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                 render={({ field }) => (
                                 <FormItem className="flex flex-col">
                                     <FormLabel>Fin de Garantía (90 días)</FormLabel>
-                                    <Input value={field.value ? format(field.value, "PPP", { locale: es }) : 'Se calculará al finalizar'} disabled />
+                                    <Input value={field.value ? format(new Date(field.value), "PPP", { locale: es }) : 'Se calculará al finalizar'} disabled />
                                 </FormItem>
                                 )}
                             />
