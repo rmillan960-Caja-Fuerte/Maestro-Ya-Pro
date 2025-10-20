@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Logo } from '../logo';
+import { Button } from '../ui/button';
 
 const navItems = [
   { href: '/', icon: LayoutGrid, label: 'Dashboard' },
