@@ -18,6 +18,12 @@ export const workOrderPaymentSchema = z.object({
   type: z.enum(['advance', 'final', 'other']).default('other'),
 });
 
+export const evidenceSchema = z.object({
+  url: z.string().url(),
+  stage: z.enum(['before', 'during', 'after']),
+  uploadedAt: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]),
+});
+
 export const workOrderSchema = z.object({
   id: z.string(),
   ownerId: z.string(),
@@ -53,7 +59,7 @@ export const workOrderSchema = z.object({
   payments: z.array(workOrderPaymentSchema).optional(),
   materialsProvidedBy: z.enum(['master', 'client']).default('master'),
   internalNotes: z.string().optional(),
-  evidence: z.array(z.object({ url: z.string(), stage: z.enum(['before', 'during', 'after'])})).optional(),
+  evidence: z.array(evidenceSchema).optional(),
   rating: z.number().min(1).max(5).optional(),
   review: z.string().optional(),
   createdAt: z.union([z.instanceof(Timestamp), z.string()]),

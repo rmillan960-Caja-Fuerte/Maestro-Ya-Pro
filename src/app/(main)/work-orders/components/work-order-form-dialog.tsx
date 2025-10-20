@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -32,7 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { workOrderSchema, statuses } from '../data/schema';
 import { specialties } from '../../masters/data/schema';
-import { Loader2, PlusCircle, Trash2, CalendarIcon, ImageIcon, Banknote, FileDigit, Star, Clock } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, CalendarIcon, Banknote, FileDigit, Star, Clock, Upload } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -197,6 +196,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             rating: workOrder.rating || 0,
             review: workOrder.review || '',
             category: workOrder.category || '',
+            evidence: workOrder.evidence || [],
           }
         : {
             ownerId: user?.uid || '',
@@ -217,6 +217,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             review: '',
             category: '',
             scheduledTime: '09:00',
+            evidence: [],
         };
         form.reset(defaultValues);
     }
@@ -735,12 +736,18 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                     </TabsContent>
                     <TabsContent value="evidence" className="mt-0">
                          <div className="text-center text-muted-foreground border-2 border-dashed rounded-lg p-12">
-                            <ImageIcon className="mx-auto h-12 w-12" />
-                            <h3 className="mt-4 text-lg font-semibold">Próximamente</h3>
-                            <p className="mt-2 text-sm">
-                                Aquí podrás subir y ver las fotos de evidencia (antes, durante, después)
-                                cuando implementemos la subida de archivos a Firebase Storage.
+                            <Upload className="mx-auto h-12 w-12" />
+                            <h3 className="mt-4 text-lg font-semibold">Subir Evidencia</h3>
+                             <p className="mt-2 text-sm">
+                                Arrastra y suelta las imágenes del trabajo aquí, o haz clic para seleccionarlas.
                             </p>
+                             <p className="mt-1 text-xs text-muted-foreground">
+                                Las imágenes de Antes, Durante y Después aparecerán en galerías separadas.
+                            </p>
+                            <Button type="button" variant="outline" className="mt-4">
+                                <Upload className="mr-2 h-4 w-4" />
+                                Seleccionar Archivos
+                            </Button>
                         </div>
                     </TabsContent>
                     <TabsContent value="review" className="mt-0 space-y-4">
@@ -796,7 +803,3 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     </Dialog>
   );
 }
-
-    
-
-    
