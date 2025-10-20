@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { Sparkles, Bot, Loader2, Send } from 'lucide-react';
+import { Sparkles, Bot, Loader2, Send, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -17,7 +16,6 @@ import { useToast } from '@/hooks/use-toast';
 import { assistantIntelligentMultimodal } from '@/ai/flows/assistant-intelligent-multimodal';
 import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback } from '../ui/avatar';
-import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Message {
@@ -31,6 +29,7 @@ export function IntelligentAssistant() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [messages, setMessages] = React.useState<Message[]>([]);
   const { toast } = useToast();
+  const scrollAreaRef = React.useRef<HTMLDivElement>(null);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +59,6 @@ export function IntelligentAssistant() {
   };
   
   // Scroll to bottom when new messages are added
-  const scrollAreaRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     if (scrollAreaRef.current) {
         const scrollableView = scrollAreaRef.current.querySelector('div');
