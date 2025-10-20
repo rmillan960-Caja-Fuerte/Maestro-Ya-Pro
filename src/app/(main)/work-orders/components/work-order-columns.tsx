@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn, formatCurrency, formatDate } from "@/lib/utils"
 import { Timestamp } from "firebase/firestore"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import type { z } from "zod"
 
 const isStale = (order: z.infer<typeof workOrderSchema>): boolean => {
     const staleStatuses = ["draft", "quote_sent"];

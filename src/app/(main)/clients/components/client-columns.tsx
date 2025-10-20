@@ -7,6 +7,7 @@ import { clientSchema, statuses, types } from "../data/schema"
 import { ClientTableColumnHeader } from "./client-table-column-header"
 import { ClientTableRowActions } from "./client-table-row-actions"
 import { Badge } from "@/components/ui/badge"
+import type { z } from "zod"
 
 export const columns: ColumnDef<z.infer<typeof clientSchema>>[] = [
   {
@@ -112,6 +113,6 @@ export const columns: ColumnDef<z.infer<typeof clientSchema>>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => <ClientTableRowActions row={row} />,
+    cell: ({ row, table }) => <ClientTableRowActions row={row} table={table} />,
   },
 ]

@@ -9,6 +9,7 @@ import { MasterTableColumnHeader } from "./master-table-column-header"
 import { MasterTableRowActions } from "./master-table-row-actions"
 import { Badge } from "@/components/ui/badge"
 import { Star } from "lucide-react"
+import type { z } from "zod"
 
 export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
   {
