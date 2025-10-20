@@ -15,40 +15,62 @@ import { columns } from './components/user-columns';
 import { UserTable } from './components/user-table';
 import type { UserProfile } from './data/schema';
 import { useRouter } from 'next/navigation';
+import { getAuth, type User as AuthUser, onIdTokenChanged } from 'firebase/auth';
+
+interface UserToken extends AuthUser {
+    customClaims?: {
+        role?: string;
+    };
+}
+
 
 export default function UsersPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
   const router = useRouter();
+  const [isSuperAdmin, setIsSuperAdmin] = React.useState<boolean | null>(null);
   
-  const userDocRef = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user?.uid]);
-
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string}>(userDocRef);
-
-  // Redirect if user is not SUPER_ADMIN
   React.useEffect(() => {
-    if (!isAuthLoading && !isProfileLoading && userProfile && userProfile.role !== 'SUPER_ADMIN') {
-        router.replace('/'); // Redirect to a safe page
+    if (isAuthLoading) return; // Wait for auth to be ready
+    if (!user) {
+        setIsSuperAdmin(false);
+        router.replace('/'); // Redirect if not logged in
+        return;
     }
-  }, [userProfile, isAuthLoading, isProfileLoading, router]);
 
+    const auth = getAuth();
+    const unsubscribe = onIdTokenChanged(auth, async (userWithClaims) => {
+        if (userWithClaims) {
+            const idTokenResult = await userWithClaims.getIdTokenResult();
+            const isAdmin = idTokenResult.claims.role === 'SUPER_ADMIN';
+            setIsSuperAdmin(isAdmin);
+            if (!isAdmin) {
+                router.replace('/');
+            }
+        } else {
+            setIsSuperAdmin(false);
+            router.replace('/');
+        }
+    });
+
+    return () => unsubscribe();
+  }, [user, isAuthLoading, router]);
 
   const usersQuery = useMemoFirebase(() => {
     // Only execute the query if we have confirmed the user is a SUPER_ADMIN
-    if (!firestore || !user?.uid || !userProfile || userProfile.role !== 'SUPER_ADMIN') return null;
-    return query(collection(firestore, 'users'));
-  }, [firestore, user?.uid, userProfile]);
+    if (isSuperAdmin) {
+      return query(collection(firestore, 'users'));
+    }
+    return null;
+  }, [firestore, isSuperAdmin]);
 
   // The hook will not run if usersQuery is null.
-  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, !!(userProfile && userProfile.role === 'SUPER_ADMIN'));
+  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, isSuperAdmin === true);
 
-  const isLoading = isAuthLoading || isProfileLoading || (!!user && isDataLoading);
+  const isLoading = isAuthLoading || isSuperAdmin === null || (isSuperAdmin && isDataLoading);
   
   // Render nothing or a loading state until redirection check is complete and role is confirmed
-  if (isAuthLoading || isProfileLoading || !userProfile) {
+  if (isSuperAdmin === null) {
     return (
         <Card>
             <CardHeader>
@@ -71,7 +93,7 @@ export default function UsersPage() {
     );
   }
 
-  if (userProfile.role !== 'SUPER_ADMIN') {
+  if (!isSuperAdmin) {
      return (
         <Card>
             <CardHeader>
