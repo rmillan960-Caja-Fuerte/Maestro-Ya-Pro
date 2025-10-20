@@ -134,18 +134,15 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // **SUPER ADMIN ROLE ASSIGNMENT LOGIC**
-      // This is the key fix. After a successful Google sign-in, we check the user's email.
-      if (user.email === 'rmillan960@gmail.com') {
-        const userRef = doc(firestore, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
+      const userRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
 
-        const roleToSet = 'SUPER_ADMIN';
-        const roleInfo = ROLES[roleToSet];
+      if (!userDoc.exists()) {
+          // If the user is signing in for the first time with Google, create their profile.
+          const [firstName, lastName] = user.displayName?.split(' ') || ['Usuario', 'Google'];
+          const roleToSet = 'OPERATOR'; // Default role
+          const roleInfo = ROLES[roleToSet];
 
-        if (!userDoc.exists()) {
-          // If the user doc doesn't exist, create it with the SUPER_ADMIN role.
-          const [firstName, lastName] = user.displayName?.split(' ') || ['Usuario', 'Maestro-Ya'];
           await setDoc(userRef, {
             uid: user.uid,
             email: user.email,
@@ -157,12 +154,16 @@ export default function LoginPage() {
             isActive: true,
             photoUrl: user.photoURL || `https://avatar.vercel.sh/${user.email}.png`
           });
-          console.log('Super Admin profile created.');
-        } else if (userDoc.data()?.role !== roleToSet) {
-          // If the doc exists but the role is not SUPER_ADMIN, update it.
-          await setDoc(userRef, { role: roleToSet, permissions: roleInfo.permissions }, { merge: true });
-          console.log('Super Admin role has been assigned/verified.');
-        }
+      }
+
+      // **SUPER ADMIN ROLE ASSIGNMENT LOGIC**
+      // This is the key fix. After a successful Google sign-in, we check the user's email.
+      if (user.email === 'rmillan960@gmail.com') {
+        const roleToSet = 'SUPER_ADMIN';
+        const roleInfo = ROLES[roleToSet];
+        // We ensure the role is set to SUPER_ADMIN, merging it with existing doc data.
+        await setDoc(userRef, { role: roleToSet, permissions: roleInfo.permissions }, { merge: true });
+        console.log('Super Admin role has been assigned/verified.');
       }
 
       toast({
