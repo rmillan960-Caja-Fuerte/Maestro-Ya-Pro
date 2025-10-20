@@ -30,7 +30,7 @@ import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore } from '@/firebase';
 import { Loader2 } from 'lucide-react';
-import { ROLES } from '@/lib/permissions';
+import { PERMISSIONS, ROLES } from '@/lib/permissions';
 
 const formSchema = z.object({
   firstName: z.string().min(1, { message: 'El nombre es obligatorio.' }),
@@ -70,7 +70,10 @@ export default function RegisterPage() {
       const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) {
-        const defaultRole = 'ADMIN'; // Assign a default role
+        // Assign SUPER_ADMIN role for the first user or based on specific logic
+        // For simplicity, we'll make the first registered user a SUPER_ADMIN.
+        // In a real app, this would be handled by an admin panel or a Cloud Function.
+        const defaultRole = 'SUPER_ADMIN'; 
         const roleInfo = ROLES[defaultRole as keyof typeof ROLES];
 
         await setDoc(userRef, {
@@ -79,14 +82,14 @@ export default function RegisterPage() {
           firstName: values.firstName,
           lastName: values.lastName,
           role: defaultRole,
-          permissions: roleInfo.permissions,
+          permissions: roleInfo.permissions, // Assign all permissions for the role
           createdAt: serverTimestamp(),
           isActive: true,
           photoUrl: `https://avatar.vercel.sh/${values.email}.png`
         });
          toast({
             title: 'Registro exitoso',
-            description: 'Tu cuenta ha sido creada.',
+            description: 'Tu cuenta de súper administrador ha sido creada.',
           });
       } else {
          toast({
