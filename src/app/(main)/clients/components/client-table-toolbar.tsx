@@ -19,7 +19,7 @@ export function ClientTableToolbar<TData>({
   table,
 }: ClientTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
-  const { openForm } = table.options.meta as { openForm: (client?: any) => void };
+  const { openForm } = table.options.meta as { openForm: () => void };
 
   return (
     <div className="flex items-center justify-between">

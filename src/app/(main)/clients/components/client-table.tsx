@@ -28,11 +28,12 @@ import {
 
 import { ClientTableToolbar } from "./client-table-toolbar"
 import { ClientTablePagination } from "./client-table-pagination"
-import { Client } from "../data/schema"
+import { clientSchema, type Client } from "../data/schema"
 import { doc, setDoc, addDoc, collection } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { ClientFormDialog } from "./client-form-dialog"
+import type { z } from "zod"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -51,38 +52,10 @@ export function ClientTable<TData, TValue>({
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [isFormOpen, setIsFormOpen] = React.useState(false);
-  const [selectedClient, setSelectedClient] = React.useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = React.useState<z.infer<typeof clientSchema> | null>(null);
 
   const firestore = useFirestore();
   const { toast } = useToast();
-
-  const table = useReactTable({
-    data,
-    columns,
-    state: {
-      sorting,
-      columnVisibility,
-      rowSelection,
-      columnFilters,
-    },
-    meta: {
-      openForm: (client?: Client) => {
-        setSelectedClient(client || null);
-        setIsFormOpen(true);
-      }
-    },
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-  })
 
   const handleSaveClient = async (clientData: Omit<Client, 'id'>) => {
     try {
@@ -113,6 +86,34 @@ export function ClientTable<TData, TValue>({
       });
     }
   };
+  
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+    },
+    meta: {
+      openForm: (client?: z.infer<typeof clientSchema>) => {
+        setSelectedClient(client || null);
+        setIsFormOpen(true);
+      }
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+  })
 
 
   return (

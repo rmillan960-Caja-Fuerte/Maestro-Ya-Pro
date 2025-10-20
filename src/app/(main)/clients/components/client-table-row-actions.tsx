@@ -13,9 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
-import { Client } from "../data/schema"
+import { clientSchema } from "../data/schema"
 import { doc, deleteDoc } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
+import type { z } from "zod"
 
 interface ClientTableRowActionsProps<TData> {
   row: Row<TData>
@@ -26,11 +27,11 @@ export function ClientTableRowActions<TData>({
 }: ClientTableRowActionsProps<TData>) {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { openForm } = row.table.options.meta as { openForm: (client?: any) => void };
+  const { openForm } = (table.options.meta as { openForm: (client?: z.infer<typeof clientSchema>) => void });
 
   const handleDelete = async () => {
     try {
-      const client = row.original as Client;
+      const client = row.original as z.infer<typeof clientSchema>;
       await deleteDoc(doc(firestore, "clients", client.id));
       toast({
         title: "Cliente eliminado",
@@ -58,7 +59,7 @@ export function ClientTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem onClick={() => openForm(row.original)}>Editar</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openForm(row.original as z.infer<typeof clientSchema>)}>Editar</DropdownMenuItem>
         <DropdownMenuItem onClick={() => toast({ title: "Próximamente", description: "La vista de perfil de cliente estará disponible pronto." })}>
           Ver Perfil
         </DropdownMenuItem>
