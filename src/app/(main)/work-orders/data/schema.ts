@@ -17,6 +17,7 @@ export const workOrderSchema = z.object({
   clientName: z.string().optional(),
   masterId: z.string().optional(),
   masterName: z.string().optional(),
+  addressId: z.string().optional(), // Nuevo
   status: z.enum([
       "draft",
       "quote_sent",
@@ -31,11 +32,16 @@ export const workOrderSchema = z.object({
   description: z.string().optional(),
   items: z.array(workOrderItemSchema).optional(),
   subtotal: z.number().default(0),
+  surcharges: z.number().default(0), // Nuevo para recargos
   tax: z.number().default(0),
   total: z.number().default(0),
+  materialsProvidedBy: z.enum(['master', 'client']).default('master'), // Nuevo
+  internalNotes: z.string().optional(), // Nuevo
+  evidence: z.array(z.object({ url: z.string(), stage: z.enum(['before', 'during', 'after'])})).optional(), // Nuevo
   createdAt: z.union([z.instanceof(Timestamp), z.string()]),
   updatedAt: z.union([z.instanceof(Timestamp), z.string()]).optional(),
   scheduledDate: z.union([z.instanceof(Date), z.string()]).optional(),
+  completionDate: z.union([z.instanceof(Date), z.string()]).optional(), // Nuevo
 })
 
 export type WorkOrder = z.infer<typeof workOrderSchema>
