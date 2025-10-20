@@ -1,4 +1,3 @@
-
 import { z } from "zod"
 import { Circle, Clock, FileWarning, Pencil, CheckCircle2, Truck, DollarSign, XCircle, ShieldAlert, Wrench } from "lucide-react"
 import { Timestamp } from "firebase/firestore"
@@ -40,6 +39,7 @@ export const workOrderSchema = z.object({
       "warranty_service",
     ]),
   title: z.string().min(1, "El título es obligatorio."),
+  category: z.string().optional(),
   description: z.string().optional(),
   items: z.array(workOrderItemSchema).optional(),
   subtotal: z.number().default(0),

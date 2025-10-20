@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -31,6 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { workOrderSchema, statuses } from '../data/schema';
+import { specialties } from '../../masters/data/schema';
 import { Loader2, PlusCircle, Trash2, CalendarIcon, ImageIcon, Banknote, FileDigit, Star } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -112,6 +112,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
       materialsProvidedBy: 'master',
       rating: 0,
       review: '',
+      category: '',
     }
   });
 
@@ -144,6 +145,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             payments: workOrder.payments?.map(p => ({...p, date: p.date instanceof Timestamp ? p.date.toDate() : new Date(p.date) })) || [],
             rating: workOrder.rating || 0,
             review: workOrder.review || '',
+            category: workOrder.category || '',
           }
         : {
             clientId: '',
@@ -161,6 +163,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             materialsProvidedBy: 'master',
             rating: 0,
             review: '',
+            category: '',
         };
         form.reset(defaultValues);
     }
@@ -283,6 +286,30 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                     <FormLabel>Título del Trabajo</FormLabel>
                                     <FormControl><Input placeholder="Ej: Pintura de apartamento completo" {...field} /></FormControl>
                                     <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="category"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Categoría de Servicio</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona una categoría" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {specialties.map((spec) => (
+                                        <SelectItem key={spec.value} value={spec.value}>
+                                            {spec.label}
+                                        </SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
                                 </FormItem>
                             )}
                         />
@@ -692,5 +719,3 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     </Dialog>
   );
 }
-
-    
