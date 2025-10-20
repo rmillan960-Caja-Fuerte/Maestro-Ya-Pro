@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useForm, useFormState, useFormStatus } from 'react-dom';
+import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -15,9 +16,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Logo } from '@/components/logo';
 import { Loader2, ArrowLeft } from 'lucide-react';
-import { generatePasswordResetLink } from './actions';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useFirebaseApp } from '@/firebase';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -31,24 +32,47 @@ function SubmitButton() {
 
 export default function ForgotPasswordPage() {
   const { toast } = useToast();
+  const firebaseApp = useFirebaseApp(); // Get the initialized Firebase App
   const [isEmailSent, setIsEmailSent] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState('');
+  const [pending, setPending] = React.useState(false);
 
-  const initialState = { type: '', message: '' };
-  const [state, dispatch] = useFormState(generatePasswordResetLink, initialState);
 
-  React.useEffect(() => {
-    if (state.message) {
-      if (state.type === 'success') {
-        setIsEmailSent(true);
-      } else { // 'error'
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: state.message,
-        });
-      }
+  const handlePasswordReset = async (formData: FormData) => {
+    const email = formData.get('email') as string;
+
+    if (!email) {
+      setErrorMessage('Por favor, introduce un correo electrónico.');
+      return;
     }
-  }, [state, toast]);
+
+    setPending(true);
+    setErrorMessage('');
+
+    try {
+      const auth = getAuth(firebaseApp);
+      await sendPasswordResetEmail(auth, email);
+      setIsEmailSent(true);
+    } catch (error: any) {
+      console.error('Error sending password reset email:', error);
+      let userFriendlyMessage = 'No se pudo enviar el correo. Por favor, inténtalo de nuevo.';
+      if (error.code === 'auth/user-not-found') {
+        // For security, we don't reveal if a user exists, so we show a generic success message.
+         setIsEmailSent(true); // Pretend it was successful
+         return;
+      } else if (error.code === 'auth/invalid-email') {
+        userFriendlyMessage = 'El formato del correo electrónico no es válido.';
+      }
+      
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: userFriendlyMessage,
+      });
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-md">
@@ -68,7 +92,7 @@ export default function ForgotPasswordPage() {
             {isEmailSent ? (
                 <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-4">
-                        {state.message}
+                        Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña en breve.
                     </p>
                     <Button asChild className="w-full">
                         <Link href="/login">
@@ -78,7 +102,7 @@ export default function ForgotPasswordPage() {
                     </Button>
                 </div>
             ) : (
-                <form action={dispatch} className="space-y-4">
+                <form action={handlePasswordReset} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="email">Correo Electrónico</Label>
                         <Input 
@@ -88,8 +112,12 @@ export default function ForgotPasswordPage() {
                             type="email"
                             required
                         />
+                         {errorMessage && <p className="text-sm font-medium text-destructive">{errorMessage}</p>}
                     </div>
-                    <SubmitButton />
+                    <Button type="submit" className="w-full" disabled={pending}>
+                      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Enviar Enlace de Recuperación
+                    </Button>
                 </form>
             )}
         </CardContent>
