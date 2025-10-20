@@ -98,12 +98,14 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Error signing in:', error);
 
+      let title = 'Error al iniciar sesión';
       let description = 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.';
 
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
         try {
           const signInMethods = await fetchSignInMethodsForEmail(auth, values.email);
           if (signInMethods.includes('google.com')) {
+            title = 'Cuenta de Google Detectada';
             description = 'Esta cuenta está registrada con Google. Por favor, usa el botón "Iniciar Sesión con Google".';
           }
         } catch (fetchError) {
@@ -114,7 +116,7 @@ export default function LoginPage() {
 
       toast({
         variant: 'destructive',
-        title: 'Error al iniciar sesión',
+        title: title,
         description: description,
       });
     } finally {
