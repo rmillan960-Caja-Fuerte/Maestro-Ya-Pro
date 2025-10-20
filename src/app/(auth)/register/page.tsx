@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createUserWithEmailAndPassword, where } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDocs, collection, query, limit, updateDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp, getDocs, collection, query, limit } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -71,12 +71,8 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       const isFirst = await isFirstUser(firestore);
-      // The very first user is SUPER_ADMIN, others are OPERATOR by default.
-      // A dedicated user management page will allow SUPER_ADMIN to create other admins.
-      const finalRole = isFirst ? 'SUPER_ADMIN' : 'OPERATOR';
-
-      // Special override for your account to ensure it's always SUPER_ADMIN
-      const roleToSet = values.email === 'rmillan960@gmail.com' ? 'SUPER_ADMIN' : finalRole;
+      
+      const roleToSet = isFirst ? 'SUPER_ADMIN' : 'OPERATOR';
 
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
@@ -115,30 +111,6 @@ export default function RegisterPage() {
       let description = 'No se pudo crear tu cuenta. Por favor, inténtalo de nuevo.';
       if (error.code === 'auth/email-already-in-use') {
         description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión.';
-
-        // If the email is yours, try to fix the role in Firestore.
-        // This is a safety net. The primary mechanism should be secure custom claims setup.
-        if (values.email === 'rmillan960@gmail.com' && firestore) {
-            try {
-                const q = query(collection(firestore, "users"), where("email", "==", values.email), limit(1));
-                const querySnapshot = await getDocs(q);
-                if (!querySnapshot.empty) {
-                    const userDoc = querySnapshot.docs[0];
-                    if (userDoc.data().role !== 'SUPER_ADMIN') {
-                        await updateDoc(userDoc.ref, { role: 'SUPER_ADMIN', permissions: ROLES.SUPER_ADMIN.permissions });
-                        toast({
-                          title: "Cuenta Corregida",
-                          description: "Hemos actualizado tu rol a Super Admin. Por favor, inicia sesión.",
-                        });
-                        router.push('/login');
-                        setIsLoading(false);
-                        return;
-                    }
-                }
-            } catch (fixError) {
-                console.error("Failed to fix SUPER_ADMIN role:", fixError);
-            }
-        }
       }
       
       toast({

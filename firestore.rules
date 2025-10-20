@@ -1,96 +1,96 @@
 /**
  * @file Firestore Security Rules
- * @core_philosophy This ruleset enforces a user-ownership model for all data, with the modification that a super admin can bypass ownership checks.
- *   Each document is owned by a specific user, identified by their UID.
- *   Only the owner or a super admin can create, read, update, or delete their own documents.
- * @data_structure
- *   - /users/{userId}: Stores user profile information. `userId` MUST match the authenticated user's UID.
- *   - /clients/{clientId}: Stores client information. Each client document has an `ownerId` field that MUST match the authenticated user's UID.
- *   - /masters/{masterId}: Stores master/professional information. Each master document has an `ownerId` field that MUST match the authenticated user's UID.
- *   - /work-orders/{workOrderId}: Stores work order details. Each work order document has an `ownerId` field that MUST match the authenticated user's UID.
- * @key_security_decisions
- *   - User listing is disallowed.
- *   - All write operations are restricted to the document owner or a super admin.
- *   - The 'role' and 'permissions' fields in the UserProfile are not directly used in these rules, but could be incorporated for more complex authorization logic in the future.
- *   - Data validation is minimal in this prototyping phase, focusing only on authorization-critical fields.
- * @denormalization_for_authorization The `ownerId` field is used throughout the data model to simplify authorization checks.
+ * @core_philosophy This ruleset enforces a strict user-ownership model for most data,
+ *  with public read access only where explicitly allowed and an explicit DENY ALL policy.
+ * @data_structure Data is organized into top-level collections for `users`, `clients`, `masters`, and `work-orders`.
+ *  Each document in these collections is intended to be owned by a specific user,
+ *  indicated by an `ownerId` field or the document ID matching the user's UID.
+ * @key_security_decisions Listing of all users is explicitly denied. All write operations require user authentication.
+ *  Ownership is enforced on writes by comparing the authenticated user's UID against the
+ *  `ownerId` field in the document or the document ID itself.
+ * @denormalization Authorization relies on the `ownerId` field within documents.
+ *  This avoids costly `get()` operations to related documents.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Controls access to the `/users` collection, which stores user profile data.
      * @path /users/{userId}
-     * @allow (create) Signed-in user with UID 'user123' can create a profile document at /users/user123.
-     * @allow (get, list) Signed-in user with UID 'user123' can read their profile document at /users/user123.
-     * @allow (update, delete) Signed-in user with UID 'user123' can update/delete their profile document at /users/user123.
-     * @deny (create) Signed-in user with UID 'user123' cannot create a profile document at /users/anotherUser.
-     * @deny (get, list, update, delete) Signed-in user with UID 'user123' cannot read/write another user's profile document at /users/anotherUser.
-     * @principle Enforces user-ownership: Only the user can manage their own profile.
+     * @allow (create) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can create their own profile.
+     * @allow (get) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can get their own profile.
+     * @allow (update) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can update their own profile.
+     * @allow (delete) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can delete their own profile.
+     * @deny (list) Listing all users is prohibited.
+     * @deny (create) User with UID 'attackerUID' cannot create a profile for 'CEPY0l00v2MkmCAdMPikfP0gL9i1'.
+     * @principle Enforces document ownership for reads and writes in the /users collection.
      */
     match /users/{userId} {
-      // Check if the user is signed in.
-      allow get: if isSignedIn() && (isOwner(userId) || isSuperAdmin());
+      allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && (isOwner(userId) || isSuperAdmin()) && request.resource.data.uid == userId;
-      allow update: if isSignedIn() && (isExistingOwner(userId) || isSuperAdmin()) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isSignedIn() && (isExistingOwner(userId) || isSuperAdmin());
+      allow create: if isSignedIn() && isSelfCreation(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to client documents.
+     * @description Controls access to the `/clients` collection, which stores client data.
      * @path /clients/{clientId}
-     * @allow (create) Signed-in user with UID 'user123' can create a client document at /clients/client456 with ownerId: 'user123'.
-     * @allow (get, list) Signed-in user with UID 'user123' can read the client document at /clients/client456 if ownerId: 'user123'.
-     * @allow (update, delete) Signed-in user with UID 'user123' can update/delete the client document at /clients/client456 if ownerId: 'user123'.
-     * @deny (create) Signed-in user with UID 'user123' cannot create a client document at /clients/client456 with ownerId: 'anotherUser'.
-     * @deny (get, list, update, delete) Signed-in user with UID 'user123' cannot read/write a client document at /clients/client456 if ownerId: 'anotherUser'.
-     * @principle Enforces document ownership: Only the owner can manage their clients.
+     * @allow (create) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can create a client document if they are the owner.
+     * @allow (get) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can get a client document if they are the owner.
+     * @allow (update) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can update a client document if they are the owner.
+     * @allow (delete) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can delete a client document if they are the owner.
+     * @deny (list) Listing all clients is prohibited.
+     * @deny (create) User with UID 'attackerUID' cannot create a client for 'otherClientId'.
+     * @principle Enforces document ownership for reads and writes in the /clients collection.
      */
     match /clients/{clientId} {
-      allow get: if isSignedIn() && (isOwner(resource.data.ownerId) || isSuperAdmin());
-      allow list: if isSignedIn() && (isOwner(request.auth.uid) || isSuperAdmin());
-      allow create: if isSignedIn() && (isOwner(request.resource.data.ownerId) || isSuperAdmin());
-      allow update: if isSignedIn() && (isExistingOwner(resource.data.ownerId) || isSuperAdmin());
-      allow delete: if isSignedIn() && (isExistingOwner(resource.data.ownerId) || isSuperAdmin());
+      allow get: if isSignedIn() && isOwner(resource.data.ownerId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
     }
 
     /**
-     * @description Controls access to master/professional documents.
+     * @description Controls access to the `/masters` collection, which stores professional/master data.
      * @path /masters/{masterId}
-     * @allow (create) Signed-in user with UID 'user123' can create a master document at /masters/master789 with ownerId: 'user123'.
-     * @allow (get, list) Signed-in user with UID 'user123' can read the master document at /masters/master789 if ownerId: 'user123'.
-     * @allow (update, delete) Signed-in user with UID 'user123' can update/delete the master document at /masters/master789 if ownerId: 'user123'.
-     * @deny (create) Signed-in user with UID 'user123' cannot create a master document at /masters/master789 with ownerId: 'anotherUser'.
-     * @deny (get, list, update, delete) Signed-in user with UID 'user123' cannot read/write a master document at /masters/master789 if ownerId: 'anotherUser'.
-     * @principle Enforces document ownership: Only the owner can manage their masters.
+     * @allow (create) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can create a master document if they are the owner.
+     * @allow (get) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can get a master document if they are the owner.
+     * @allow (update) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can update a master document if they are the owner.
+     * @allow (delete) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can delete a master document if they are the owner.
+     * @deny (list) Listing all masters is prohibited.
+     * @deny (create) User with UID 'attackerUID' cannot create a master for 'otherMasterId'.
+     * @principle Enforces document ownership for reads and writes in the /masters collection.
      */
     match /masters/{masterId} {
-      allow get: if isSignedIn() && (isOwner(resource.data.ownerId) || isSuperAdmin());
-      allow list: if isSignedIn() && (isOwner(request.auth.uid) || isSuperAdmin());
-      allow create: if isSignedIn() && (isOwner(request.resource.data.ownerId) || isSuperAdmin());
-      allow update: if isSignedIn() && (isExistingOwner(resource.data.ownerId) || isSuperAdmin());
-      allow delete: if isSignedIn() && (isExistingOwner(resource.data.ownerId) || isSuperAdmin());
+      allow get: if isSignedIn() && isOwner(resource.data.ownerId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
     }
 
     /**
-     * @description Controls access to work order documents.
+     * @description Controls access to the `/work-orders` collection, which stores work order data.
      * @path /work-orders/{workOrderId}
-     * @allow (create) Signed-in user with UID 'user123' can create a work order document at /work-orders/workOrder101 with ownerId: 'user123'.
-     * @allow (get, list) Signed-in user with UID 'user123' can read the work order document at /work-orders/workOrder101 if ownerId: 'user123'.
-     * @allow (update, delete) Signed-in user with UID 'user123' can update/delete the work order document at /work-orders/workOrder101 if ownerId: 'user123'.
-     * @deny (create) Signed-in user with UID 'user123' cannot create a work order document at /work-orders/workOrder101 with ownerId: 'anotherUser'.
-     * @deny (get, list, update, delete) Signed-in user with UID 'user123' cannot read/write a work order document at /work-orders/workOrder101 if ownerId: 'anotherUser'.
-     * @principle Enforces document ownership: Only the owner can manage their work orders.
+     * @allow (create) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can create a work order document if they are the owner.
+     * @allow (get) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can get a work order document if they are the owner.
+     * @allow (update) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can update a work order document if they are the owner.
+     * @allow (delete) User with UID 'CEPY0l00v2MkmCAdMPikfP0gL9i1' can delete a work order document if they are the owner.
+     * @deny (list) Listing all work orders is prohibited.
+     * @deny (create) User with UID 'attackerUID' cannot create a work order for 'otherWorkOrderId'.
+     * @principle Enforces document ownership for reads and writes in the /work-orders collection.
      */
     match /work-orders/{workOrderId} {
-      allow get: if isSignedIn() && (isOwner(resource.data.ownerId) || isSuperAdmin());
-      allow list: if isSignedIn() && (isOwner(request.auth.uid) || isSuperAdmin());
-      allow create: if isSignedIn() && (isOwner(request.resource.data.ownerId) || isSuperAdmin());
-      allow update: if isSignedIn() && (isExistingOwner(resource.data.ownerId) || isSuperAdmin());
-      allow delete: if isSignedIn() && (isExistingOwner(resource.data.ownerId) || isSuperAdmin());
+      allow get: if isSignedIn() && isOwner(resource.data.ownerId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
     }
+
   }
 
   // Helper functions
@@ -102,11 +102,11 @@ service cloud.firestore {
     return request.auth.uid == userId;
   }
 
-  function isExistingOwner(userId) {
+    function isExistingOwner(userId) {
     return isOwner(userId) && resource != null;
   }
 
-    function isSuperAdmin() {
-        return request.auth.token.role == 'super_admin';
-    }
+  function isSelfCreation(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+  }
 }

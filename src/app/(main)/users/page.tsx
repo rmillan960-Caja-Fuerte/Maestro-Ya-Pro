@@ -29,30 +29,31 @@ export default function UsersPage() {
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
   
-  const isSuperAdmin = userProfile?.role === 'SUPER_ADMIN';
+  // This state will tell us when it's safe to run the main query.
+  const canFetchUsers = !isProfileLoading && userProfile?.role === 'SUPER_ADMIN';
 
   React.useEffect(() => {
     // Wait until profile is loaded to make a decision
-    if (!isAuthLoading && !isProfileLoading && !isSuperAdmin) {
+    if (!isAuthLoading && !isProfileLoading && userProfile?.role !== 'SUPER_ADMIN') {
       router.replace('/');
     }
-  }, [isAuthLoading, isProfileLoading, isSuperAdmin, router]);
+  }, [isAuthLoading, isProfileLoading, userProfile, router]);
 
 
   const usersQuery = useMemoFirebase(() => {
     // Only execute the query if we have confirmed the user is a SUPER_ADMIN
-    if (firestore && isSuperAdmin) {
+    if (firestore && canFetchUsers) {
       return query(collection(firestore, 'users'));
     }
     return null;
-  }, [firestore, isSuperAdmin]);
+  }, [firestore, canFetchUsers]);
 
   // The hook will not run if usersQuery is null.
-  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, isSuperAdmin);
+  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, canFetchUsers);
 
-  const isLoading = isAuthLoading || isProfileLoading || (isSuperAdmin && isDataLoading);
+  const isLoading = isAuthLoading || isProfileLoading || (canFetchUsers && isDataLoading);
 
-  if (!isSuperAdmin && !isLoading) {
+  if (!isAuthLoading && !isProfileLoading && userProfile?.role !== 'SUPER_ADMIN') {
      return (
         <Card>
             <CardHeader>
