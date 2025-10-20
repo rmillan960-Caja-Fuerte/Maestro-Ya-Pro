@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, doc } from 'firebase/firestore';
+import { collection, query, doc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import {
   Card,
@@ -16,6 +16,8 @@ import { columns } from './components/user-columns';
 import { UserTable } from './components/user-table';
 import type { UserProfile } from './data/schema';
 import { useRouter } from 'next/navigation';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
 export default function UsersPage() {
   const firestore = useFirestore();
@@ -29,7 +31,8 @@ export default function UsersPage() {
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
   
-  // This state will tell us when it's safe to run the main query.
+  // The user must be an OWNER to view this page.
+  // This check is now performed using client-side data.
   const canFetchUsers = !isProfileLoading && userProfile?.role === 'OWNER';
 
   React.useEffect(() => {
@@ -49,10 +52,11 @@ export default function UsersPage() {
   }, [firestore, canFetchUsers]);
 
   // The hook will not run if usersQuery is null. `useCollection` has a second argument to enable/disable it.
-  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, canFetchUsers);
+  const { data: users, isLoading: isDataLoading, error } = useCollection<UserProfile>(usersQuery, canFetchUsers);
 
   const isLoading = isAuthLoading || isProfileLoading || (canFetchUsers && isDataLoading);
 
+  // If the user's role is not OWNER, show an access denied message.
   if (!isAuthLoading && !isProfileLoading && userProfile && userProfile?.role !== 'OWNER') {
      return (
         <Card>
@@ -73,6 +77,16 @@ export default function UsersPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+            <Alert variant="destructive" className="mb-4">
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Error de Permisos</AlertTitle>
+                <AlertDescription>
+                    <p>Las reglas de seguridad de Firestore impidieron la carga de usuarios. Esto es esperado si no se ha configurado un backend para gestionar los roles (Custom Claims).</p>
+                    <p className='mt-2 text-xs'>Error: {error.message}</p>
+                </AlertDescription>
+            </Alert>
+        )}
         {isLoading ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">

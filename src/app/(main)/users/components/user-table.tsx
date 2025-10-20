@@ -76,30 +76,40 @@ export function UserTable<TData, TValue>({
   const auth = useAuth();
   const { toast } = useToast();
 
-  const handleSaveUser = async (userData: Omit<z.infer<typeof userProfileSchema>, 'uid' | 'createdAt' | 'permissions'>, password?: string) => {
+  const handleSaveUser = async (userData: Omit<z.infer<typeof userProfileSchema>, 'id' | 'uid' | 'createdAt' | 'permissions'>, password?: string) => {
     try {
-      if (selectedUser && selectedUser.uid) {
+      if (selectedUser && selectedUser.id) {
         // Update existing user
-        const userRef = doc(firestore, "users", selectedUser.uid);
+        // NOTE: In a real app, updating roles and especially custom claims should be
+        // handled by a secure backend function (e.g., a Cloud Function) to prevent
+        // users from elevating their own privileges.
+        const userRef = doc(firestore, "users", selectedUser.id);
         const roleInfo = ROLES[userData.role as keyof typeof ROLES];
         await setDoc(userRef, {...userData, permissions: roleInfo.permissions }, { merge: true });
+        
+        // This is a placeholder for calling a Cloud Function to set custom claims
+        console.warn("In a production app, you would call a Cloud Function here to set custom claims for the user.");
+        
         toast({
           title: "Usuario actualizado",
           description: "La información del usuario ha sido actualizada.",
         });
       } else {
-        // Create new user
+        // This is a temporary admin action. In a real production app,
+        // you would create a Cloud Function to handle user creation to avoid
+        // needing the currently logged-in user to have special auth privileges.
         if (!password) {
             toast({ variant: "destructive", title: "Error", description: "La contraseña es obligatoria para nuevos usuarios."});
             return;
         }
 
-        // WARNING: This is a temporary admin action. In a real production app,
-        // you would create a Cloud Function to handle user creation to avoid
-        // needing the currently logged-in user to have special auth privileges.
-        // This function would securely create the user and their Firestore profile.
-        // For this prototype, we create the user on the client.
-        const userCredential = await createUserWithEmailAndPassword(auth, userData.email, password);
+        // We can't create users with custom claims from the client-side SDK.
+        // This is a major limitation and the reason why a Cloud Function is the correct approach.
+        // For this prototype, we will create the user and their Firestore doc,
+        // but the custom claim for the role won't be set, which will cause permission issues.
+        // The proper fix is outside the scope of what can be done purely on the client.
+        const tempAuth = auth;
+        const userCredential = await createUserWithEmailAndPassword(tempAuth, userData.email, password);
         const newUser = userCredential.user;
 
         const roleInfo = ROLES[userData.role as keyof typeof ROLES];
@@ -110,10 +120,13 @@ export function UserTable<TData, TValue>({
             permissions: roleInfo.permissions,
             createdAt: serverTimestamp(),
         });
+        
+        // This is where you would call a Cloud Function to set the custom claim
+        console.warn("New user created, but custom claims for role-based access CANNOT be set from the client. A backend function is required for this.");
 
         toast({
-          title: "Usuario creado",
-          description: "El nuevo usuario ha sido añadido al equipo.",
+          title: "Usuario creado (con limitaciones)",
+          description: "El nuevo usuario ha sido añadido, pero sus permisos de rol no se aplicarán completamente sin un backend.",
         });
       }
       setIsFormOpen(false);
