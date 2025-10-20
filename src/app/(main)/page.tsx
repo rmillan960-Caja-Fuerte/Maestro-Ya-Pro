@@ -63,7 +63,7 @@ const ordersChartConfig: ChartConfig = specialties.reduce((acc, specialty, index
 
 export default function DashboardPage() {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
 
   // Queries
   const workOrdersQuery = useMemoFirebase(() => 
@@ -79,7 +79,7 @@ export default function DashboardPage() {
   const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery);
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
 
-  const isLoading = isLoadingWorkOrders || isLoadingClients;
+  const isLoading = isAuthLoading || (user && (isLoadingWorkOrders || isLoadingClients));
 
   // Memoized data processing
   const dashboardData = React.useMemo(() => {

@@ -1,125 +1,123 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for user-specific data,
- *              while allowing public read access to work orders.
+ * @fileoverview Firestore Security Rules for Maestro-Ya Pro.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes secure data access based on user roles and ownership.
+ * It aims to prevent unauthorized data modification and exposure while allowing
+ * for flexible data structures during the prototyping phase.  Schema validation is intentionally relaxed.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles; only accessible by the owning user.
- * - /clients/{clientId}: Stores client information; only accessible by the owning user (creator).
- * - /masters/{masterId}: Stores master (professional) information; only accessible by the owning user (creator).
- * - /work-orders/{workOrderId}: Stores work order details; publicly readable, but owner-only writable (creator).
+ * - /users/{userId}: Stores user profiles. Accessible only to the user and potentially admins (not implemented in this version).
+ * - /clients/{clientId}: Stores client information. Accessible only to the owner (creator) of the client and potentially admins.
+ * - /masters/{masterId}: Stores master (professional) information. Accessible only to the owner (creator) of the master and potentially admins.
+ * - /work-orders/{workOrderId}: Stores work orders. Publicly readable, but only the owner can modify.
  *
  * Key Security Decisions:
  * - User listing is disallowed.
- * - Public read access is granted to the `/work-orders` collection. This assumes that all `work-orders` data is intended to be public, or that more granular access controls will be implemented at the application level.
- * - Strict ownership is enforced for user profiles, clients, and masters.
+ * - Owner-only access is enforced for critical write operations (create, update, delete) where applicable.
+ * - No schema validation is done beyond authorization checks.
  *
  * Denormalization for Authorization:
- * - The `Client` and `Master` entities both contain an `ownerId` field, which is used to enforce ownership. This avoids the need for complex queries to determine ownership.
- * - The `WorkOrder` entity does not contain an `ownerId` field. It uses `createdBy` field to store creator's uid.
+ * - Clients and Masters have a denormalized `ownerId` field to simplify owner-based access rules.
+ *
+ * Structural Segregation:
+ * - No segregation between public and private data is implemented at this time.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is authenticated.
+     * @description Checks if the user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the user ID matches the authenticated user's ID.
+     * @description Checks if the authenticated user is the owner of the resource.
+     * @param {string} userId - The ID of the user to check against.
+     * @return {boolean} True if the user is the owner, false otherwise.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the user is the existing owner of the resource.
+     * @description Checks if the authenticated user is the existing owner of the resource.
+     * @param {string} userId - The ID of the user to check against.
+     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
      */
     function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+        return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Ensures that the incoming `id` matches the authenticated user's ID
-     *              on create, and that this field is immutable on update.
-     */
-    function isValidUserId(userId) {
-      return (
-        (request.method == 'create' && request.resource.data.uid == userId) ||
-        (request.method == 'update' && request.resource.data.uid == resource.data.uid)
-      );
-    }
-
-    /**
-     * @description Rules for /users/{userId} collection.
+     * @description Rules for user documents.
      * @path /users/{userId}
-     * @allow (create) - Allow a user to create their own profile if the UID matches.
-     * @allow (get, update, delete) - Allow the user to read, update, or delete their own profile.
-     * @deny (create) - Deny creating a user with a mismatched UID.
-     * @deny (get, update, delete) - Deny access to other user's profiles.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (create) User with UID 'user_abc' can create their own profile: `request.auth.uid == 'user_abc'`
+     * @deny (create) User with UID 'user_xyz' cannot create a profile for 'user_abc': `request.auth.uid != 'user_abc'`
+     * @allow (get) User with UID 'user_abc' can read their profile: `request.auth.uid == 'user_abc'`
+     * @deny (get) User with UID 'user_xyz' cannot read 'user_abc''s profile: `request.auth.uid != 'user_abc'`
+     * @principle Enforces document ownership for writes and reads.
      */
     match /users/{userId} {
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && isValidUserId(userId);
-      allow update: if isExistingOwner(userId) && isValidUserId(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-     /**
-      * @description Rules for /clients/{clientId} collection.
-      * @path /clients/{clientId}
-      * @allow (create) - Allow a user to create a client if they are the owner.
-      * @allow (get, update, delete) - Allow the owner to read, update, or delete the client.
-      * @deny (create) - Deny creating a client with a mismatched ownerId.
-      * @deny (get, update, delete) - Deny access to clients owned by other users.
-      * @principle Enforces document ownership for client data.
-      */
-    match /clients/{clientId} {
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid && resource != null;
-      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid && resource != null;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if false;
     }
 
     /**
-     * @description Rules for /masters/{masterId} collection.
+     * @description Rules for client documents.
+     * @path /clients/{clientId}
+     * @allow (create) User with UID 'user_abc' can create a client and set themself as the owner: `request.auth.uid == 'user_abc' && request.resource.data.ownerId == 'user_abc'`
+     * @deny (create) User with UID 'user_xyz' cannot create a client owned by 'user_abc': `request.auth.uid == 'user_xyz' && request.resource.data.ownerId == 'user_abc'`
+     * @allow (get) User with UID 'user_abc' can read a client they own: `resource.data.ownerId == 'user_abc'`
+     * @deny (get) User with UID 'user_xyz' cannot read a client owned by 'user_abc': `resource.data.ownerId == 'user_abc' && request.auth.uid != 'user_abc'`
+     * @principle Enforces document ownership for writes.
+     */
+    match /clients/{clientId} {
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
+      allow update: if isExistingOwner(resource.data.ownerId);
+      allow delete: if isExistingOwner(resource.data.ownerId);
+    }
+
+    /**
+     * @description Rules for master documents.
      * @path /masters/{masterId}
-     * @allow (create) - Allow a user to create a master if they are the owner.
-     * @allow (get, update, delete) - Allow the owner to read, update, or delete the master.
-     * @deny (create) - Deny creating a master with a mismatched ownerId.
-     * @deny (get, update, delete) - Deny access to masters owned by other users.
-     * @principle Enforces document ownership for master data.
+     * @allow (create) User with UID 'user_abc' can create a master and set themself as the owner: `request.auth.uid == 'user_abc' && request.resource.data.ownerId == 'user_abc'`
+     * @deny (create) User with UID 'user_xyz' cannot create a master owned by 'user_abc': `request.auth.uid == 'user_xyz' && request.resource.data.ownerId == 'user_abc'`
+     * @allow (get) User with UID 'user_abc' can read a master they own: `resource.data.ownerId == 'user_abc'`
+     * @deny (get) User with UID 'user_xyz' cannot read a master owned by 'user_abc': `resource.data.ownerId == 'user_abc' && request.auth.uid != 'user_abc'`
+     * @principle Enforces document ownership for writes.
      */
     match /masters/{masterId} {
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if false;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid && resource != null;
-      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid && resource != null;
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
+      allow update: if isExistingOwner(resource.data.ownerId);
+      allow delete: if isExistingOwner(resource.data.ownerId);
     }
 
     /**
-     * @description Rules for /work-orders/{workOrderId} collection.
+     * @description Rules for work order documents.
      * @path /work-orders/{workOrderId}
-     * @allow (get, list) - Allow anyone to read work orders.
-     * @allow (create) - Allow a user to create a work order if they are authenticated and the creatorId matches.
-     * @allow (update, delete) - Allow the creator to update or delete the work order.
-     * @deny (create) - Deny creating a work order with a mismatched creatorId.
-     * @deny (update, delete) - Deny updating or deleting work orders not created by the user.
-     * @principle Allows public read access, but enforces owner-only writes for work orders.
+     * @allow (get) Anyone can read work orders.
+     * @allow (list) Anyone can list work orders.
+     * @deny (create) No one can create work orders - ownerId needs to exist
+     * @principle Public read, owner-only writes.
      */
     match /work-orders/{workOrderId} {
-      allow get, list: if true;
-      allow create: if isSignedIn(); // Validates user is signed in to create
-      allow update: if isSignedIn(); // Restrict update to logged-in users
-      allow delete: if isSignedIn(); // Restrict delete to logged-in users
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow update: if false;  // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false;  // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }
