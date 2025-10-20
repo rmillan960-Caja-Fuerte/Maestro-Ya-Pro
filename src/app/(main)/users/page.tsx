@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -42,7 +41,7 @@ export default function UsersPage() {
     return query(collection(firestore, 'users'));
   }, [firestore, user?.uid, userProfile]);
 
-  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, !!userProfile);
+  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, !!userProfile && userProfile.role === 'SUPER_ADMIN');
 
   const isLoading = isAuthLoading || isProfileLoading || (user && isDataLoading);
   
