@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -29,17 +30,27 @@ import {
   Settings,
   CreditCard,
   LogOut,
+  Badge,
 } from 'lucide-react';
 import AppSidebar from './sidebar';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { Avatar, AvatarFallback } from '../ui/avatar';
+import { doc } from 'firebase/firestore';
 
 export default function AppHeader() {
   const pathname = usePathname();
   const auth = useAuth();
   const router = useRouter();
-
+  const firestore = useFirestore();
+  const { user: authUser, isUserLoading } = useUser();
+  
+  const userDocRef = useMemoFirebase(
+    () => (firestore && authUser ? doc(firestore, 'users', authUser.uid) : null),
+    [firestore, authUser]
+  );
+  
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -80,6 +91,8 @@ export default function AppHeader() {
     ];
   }, [pathname]);
 
+  const userInitials = userProfile ? `${userProfile.firstName[0]}${userProfile.lastName[0]}` : <User />;
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
       <Sheet>
@@ -113,32 +126,40 @@ export default function AppHeader() {
           >
             <Avatar>
               <AvatarFallback>
-                <User />
+                {isUserLoading || isProfileLoading ? <User /> : userInitials}
               </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+          {isUserLoading || isProfileLoading ? (
+             <DropdownMenuLabel>Cargando...</DropdownMenuLabel>
+          ) : userProfile ? (
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{`${userProfile.firstName} ${userProfile.lastName}`}</p>
+                <p className="text-xs leading-none text-muted-foreground">{userProfile.email}</p>
+                {userProfile.role && <p className="text-xs leading-none text-muted-foreground font-bold mt-1 uppercase">{userProfile.role.replace('_', ' ')}</p>}
+              </div>
+            </DropdownMenuLabel>
+          ) : (
+            <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+          )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <Link href="/settings/profile" className="flex items-center w-full">
+          <DropdownMenuGroup>
+            <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
-              Perfil
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/settings/billing" className="flex items-center w-full">
+              <span>Perfil</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
               <CreditCard className="mr-2 h-4 w-4" />
-              Facturación
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Link href="/settings" className="flex items-center w-full">
+              <span>Facturación</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />
-              Configuración
-            </Link>
-          </DropdownMenuItem>
+              <span>Configuración</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <div className="flex items-center w-full cursor-pointer">
