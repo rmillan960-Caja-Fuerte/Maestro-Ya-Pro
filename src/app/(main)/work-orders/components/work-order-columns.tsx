@@ -81,15 +81,15 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
       }
 
       return (
-        <Badge 
-            variant={status.variant as any} 
-            className="flex items-center gap-2 whitespace-nowrap"
-            style={{ 
-                backgroundColor: status.color, 
-                color: status.color ? 'white' : undefined 
-            }}
+        <Badge
+          style={{ 
+            backgroundColor: status.color, 
+            color: status.color ? 'white' : undefined 
+          }}
+          className={status.color ? 'border-transparent' : ''}
+          variant={status.variant as any}
         >
-          <status.icon className="h-3 w-3" />
+          {status.icon && <status.icon className="mr-2 h-3 w-3" />}
           {status.label}
         </Badge>
       )

@@ -55,52 +55,55 @@ export const statuses = [
     label: "Borrador",
     icon: Pencil,
     variant: "outline",
+    color: "",
   },
   {
     value: "quote_sent",
     label: "Cotizado",
     icon: FileWarning,
     variant: "secondary",
+    color: "",
   },
   {
     value: "approved",
     label: "Aprobado",
     icon: CheckCircle2,
     variant: "default",
-    color: "bg-green-500"
+    color: "bg-green-500",
   },
   {
     value: "scheduled",
     label: "Agendado",
     icon: Clock,
     variant: "default",
-    color: "bg-blue-500"
+    color: "bg-blue-500",
   },
   {
     value: "in_progress",
     label: "En Progreso",
     icon: Truck,
     variant: "default",
-    color: "bg-yellow-500"
+    color: "bg-yellow-500",
   },
   {
     value: "completed",
     label: "Completado",
     icon: CheckCircle2,
     variant: "default",
-    color: "bg-green-700"
+    color: "bg-green-700",
   },
   {
     value: "paid",
     label: "Pagado",
     icon: DollarSign,
     variant: "default",
-    color: "bg-emerald-500"
+    color: "bg-emerald-500",
   },
     {
     value: "cancelled",
     label: "Cancelado",
     icon: XCircle,
     variant: "destructive",
+    color: "",
   },
 ]
