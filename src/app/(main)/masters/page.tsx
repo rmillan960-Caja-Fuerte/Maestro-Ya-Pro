@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, doc, CollectionReference } from 'firebase/firestore';
+import { collection, query, where, doc, type CollectionReference, type Query } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 
 import { columns } from './components/master-columns';
@@ -33,14 +32,15 @@ export default function MastersPage() {
   const mastersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
     
-    let q = collection(firestore, 'masters') as CollectionReference | query;
+    let q: CollectionReference | Query;
 
     if (userProfile.role === 'OWNER') {
+      q = collection(firestore, 'masters');
       if (selectedCountry !== 'all') {
         q = query(q, where('country', '==', selectedCountry));
       }
     } else {
-        q = query(q, where('ownerId', '==', user.uid));
+      q = query(collection(firestore, 'masters'), where('ownerId', '==', user.uid));
     }
     
     return q;

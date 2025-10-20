@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, doc, setDoc, CollectionReference } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, type CollectionReference, type Query } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { LayoutGrid, List } from 'lucide-react';
 
@@ -41,14 +40,17 @@ export default function ClientsPage() {
   const clientsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
     
-    let q: CollectionReference | query = collection(firestore, 'clients');
+    let q: CollectionReference | Query;
 
     if (userProfile.role === 'OWNER') {
+      // Owner can see all clients, or filter by country
+      q = collection(firestore, 'clients');
       if (selectedCountry !== 'all') {
         q = query(q, where('country', '==', selectedCountry));
       }
     } else {
-        q = query(q, where('ownerId', '==', user.uid));
+      // Other roles only see the clients they own
+      q = query(collection(firestore, 'clients'), where('ownerId', '==', user.uid));
     }
     
     return q;
@@ -71,8 +73,8 @@ export default function ClientsPage() {
         }));
         toast({
             variant: "destructive",
-            title: "Error",
-            description: "No se pudo actualizar el estado del cliente.",
+            title: "Error de Permiso",
+            description: "No tienes permiso para actualizar este cliente.",
         });
     });
   };

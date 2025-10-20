@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -37,7 +36,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from 'rechar
 import { Button } from '@/components/ui/button';
 import type { ChartConfig } from '@/components/ui/chart';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, where, Timestamp, doc, CollectionReference } from 'firebase/firestore';
+import { collection, query, orderBy, where, Timestamp, doc, type CollectionReference, type Query } from 'firebase/firestore';
 import { type WorkOrder, statuses as workOrderStatuses } from './work-orders/data/schema';
 import { specialties } from './masters/data/schema';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -78,14 +77,15 @@ export default function DashboardPage() {
   const workOrdersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
     
-    let q = collection(firestore, 'work-orders') as CollectionReference | query;
+    let q: CollectionReference | Query;
 
     if (userProfile.role === 'OWNER') {
+      q = collection(firestore, 'work-orders');
       if (selectedCountry !== 'all') {
         q = query(q, where('country', '==', selectedCountry));
       }
     } else {
-      q = query(q, where('ownerId', '==', user.uid));
+      q = query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid));
     }
     
     return query(q, orderBy('createdAt', 'desc'));
@@ -358,7 +358,7 @@ export default function DashboardPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {formatDate(order.createdAt, 'short')}
+                    {formatDate(order.createdAt as Date | Timestamp, 'short')}
                   </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(order.total)}
