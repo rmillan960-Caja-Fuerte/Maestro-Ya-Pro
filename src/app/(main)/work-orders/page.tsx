@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, orderBy, where, doc } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import {
   Card,
   CardContent,
@@ -23,35 +23,48 @@ export default function WorkOrdersPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
 
-  // 1. Define stable queries for all needed collections, ensuring user UID exists.
-  const workOrdersQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid 
-      ? null 
-      : query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')),
-    [firestore, user?.uid]
-  );
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string}>(userDocRef);
+
+  // 1. Define stable queries for all needed collections, ensuring user UID and profile exist.
+  const workOrdersQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || !userProfile) return null;
+    const baseQuery = collection(firestore, 'work-orders');
+    if (userProfile.role === 'SUPER_ADMIN') {
+      return query(baseQuery, orderBy('createdAt', 'desc'));
+    }
+    return query(baseQuery, where('ownerId', '==', user.uid), orderBy('createdAt', 'desc'));
+  }, [firestore, user?.uid, userProfile]);
   
-  const clientsQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid 
-      ? null 
-      : query(collection(firestore, 'clients'), where('ownerId', '==', user.uid)),
-    [firestore, user?.uid]
-  );
+  const clientsQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || !userProfile) return null;
+    const baseQuery = collection(firestore, 'clients');
+    if (userProfile.role === 'SUPER_ADMIN') {
+      return query(baseQuery);
+    }
+    return query(baseQuery, where('ownerId', '==', user.uid));
+  }, [firestore, user?.uid, userProfile]);
   
-  const mastersQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid 
-      ? null 
-      : query(collection(firestore, 'masters'), where('ownerId', '==', user.uid)),
-    [firestore, user?.uid]
-  );
+  const mastersQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || !userProfile) return null;
+    const baseQuery = collection(firestore, 'masters');
+    if (userProfile.role === 'SUPER_ADMIN') {
+      return query(baseQuery);
+    }
+    return query(baseQuery, where('ownerId', '==', user.uid));
+  }, [firestore, user?.uid, userProfile]);
 
   // 2. Fetch data from all collections in parallel. useCollection will handle null queries.
-  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!user);
-  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery, !!user);
-  const { data: masters, isLoading: isLoadingMasters } = useCollection<Master>(mastersQuery, !!user);
+  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!userProfile);
+  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery, !!userProfile);
+  const { data: masters, isLoading: isLoadingMasters } = useCollection<Master>(mastersQuery, !!userProfile);
 
   // Determine the overall loading state
-  const isLoading = isAuthLoading || (user && (isLoadingWorkOrders || isLoadingClients || isLoadingMasters));
+  const isLoading = isAuthLoading || isProfileLoading || (user && (isLoadingWorkOrders || isLoadingClients || isLoadingMasters));
 
 
   // 3. Enrich the work orders with client and master names once all data is loaded

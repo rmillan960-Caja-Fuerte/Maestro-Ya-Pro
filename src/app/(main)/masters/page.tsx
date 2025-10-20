@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { collection, query, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 
 import { columns } from './components/master-columns';
 import { MasterTable } from './components/master-table';
@@ -20,14 +20,28 @@ export default function MastersPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
   
-  const mastersQuery = useMemoFirebase(() => {
+  const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return query(collection(firestore, 'masters'), where('ownerId', '==', user.uid));
+    return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: masters, isLoading: isDataLoading } = useCollection<Master>(mastersQuery, !!user);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string}>(userDocRef);
 
-  const isLoading = isAuthLoading || (user && isDataLoading);
+  const mastersQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || !userProfile) return null;
+    
+    const mastersCollection = collection(firestore, 'masters');
+
+    if (userProfile.role === 'SUPER_ADMIN') {
+      return query(mastersCollection);
+    } else {
+      return query(mastersCollection, where('ownerId', '==', user.uid));
+    }
+  }, [firestore, user?.uid, userProfile]);
+
+  const { data: masters, isLoading: isDataLoading } = useCollection<Master>(mastersQuery, !!userProfile);
+
+  const isLoading = isAuthLoading || isProfileLoading || (user && isDataLoading);
 
   return (
     <Card>

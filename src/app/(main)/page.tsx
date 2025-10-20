@@ -35,8 +35,8 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import type { ChartConfig } from '@/components/ui/chart';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, where, Timestamp } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, orderBy, where, Timestamp, doc } from 'firebase/firestore';
 import { type WorkOrder } from './work-orders/data/schema';
 import { type Client } from './clients/data/schema';
 import { specialties } from './masters/data/schema';
@@ -64,30 +64,45 @@ const ordersChartConfig: ChartConfig = specialties.reduce((acc, specialty, index
 export default function DashboardPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
-
-  // Queries - Memoized and dependent on user.uid
-  const workOrdersQuery = useMemoFirebase(() => {
+  
+  const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
+  
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string}>(userDocRef);
+
+  // Queries - Memoized and dependent on user.uid and userProfile
+  const workOrdersQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || !userProfile) return null;
+    const baseQuery = collection(firestore, 'work-orders');
+    if (userProfile.role === 'SUPER_ADMIN') {
+      return query(baseQuery, orderBy('createdAt', 'desc'));
+    }
     return query(
-      collection(firestore, 'work-orders'),
+      baseQuery,
       where('ownerId', '==', user.uid),
       orderBy('createdAt', 'desc')
     );
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, userProfile]);
   
   const clientsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore || !user?.uid || !userProfile) return null;
+    const baseQuery = collection(firestore, 'clients');
+    if (userProfile.role === 'SUPER_ADMIN') {
+      return query(baseQuery);
+    }
     return query(
-      collection(firestore, 'clients'), 
+      baseQuery, 
       where('ownerId', '==', user.uid)
     );
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, userProfile]);
 
   // Data fetching - useCollection will not run if query is null
-  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!user);
-  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery, !!user);
+  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!userProfile);
+  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery, !!userProfile);
 
-  const isLoading = isAuthLoading || (user && (isLoadingWorkOrders || isLoadingClients));
+  const isLoading = isAuthLoading || isProfileLoading || (user && (isLoadingWorkOrders || isLoadingClients));
 
   // Memoized data processing
   const dashboardData = React.useMemo(() => {

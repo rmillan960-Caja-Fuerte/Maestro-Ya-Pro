@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { collection, query, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 
 import { columns } from './components/client-columns';
 import { ClientTable } from './components/client-table';
@@ -20,17 +20,30 @@ export default function ClientsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
   
-  const clientsQuery = useMemoFirebase(() => {
-    // Only build the query if the user is authenticated and their UID is available.
+  const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return query(collection(firestore, 'clients'), where('ownerId', '==', user.uid));
-  }, [firestore, user?.uid]); 
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
 
-  // `useCollection` will internally handle the `null` case and not execute the query.
-  const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery, !!user);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string}>(userDocRef);
 
-  // Loading is complete only when auth has finished and, if there's a user, the data has loaded.
-  const isLoading = isAuthLoading || (user && isDataLoading);
+  const clientsQuery = useMemoFirebase(() => {
+    // Wait until we have the user and their profile
+    if (!firestore || !user?.uid || !userProfile) return null;
+
+    const clientsCollection = collection(firestore, 'clients');
+    
+    // If user is SUPER_ADMIN, fetch all clients. Otherwise, fetch only their own.
+    if (userProfile.role === 'SUPER_ADMIN') {
+      return query(clientsCollection);
+    } else {
+      return query(clientsCollection, where('ownerId', '==', user.uid));
+    }
+  }, [firestore, user?.uid, userProfile]); 
+
+  const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery, !!userProfile);
+
+  const isLoading = isAuthLoading || isProfileLoading || (user && isDataLoading);
 
   return (
     <Card>
