@@ -1,69 +1,7 @@
 {
-  "entities": {
-    "User": {
-      "title": "User",
-      "type": "object",
-      "description": "Represents a user within the Maestro-Ya Pro application.",
-      "properties": {
-        "uid": { "type": "string", "description": "Firebase UID." },
-        "email": { "type": "string", "description": "Email address." },
-        "role": { "type": "string", "description": "User role." },
-        "permissions": { "type": "array", "items": { "type": "string" } },
-        "firstName": { "type": "string" },
-        "lastName": { "type": "string" }
-      },
-      "required": ["uid", "email", "role"]
-    },
-    "Client": {
-      "title": "Client",
-      "type": "object",
-      "description": "Represents a client.",
-      "properties": {
-        "ownerId": { "type": "string" },
-        "name": { "type": "string" }
-      },
-      "required": ["ownerId", "name"]
-    },
-    "Master": {
-      "title": "Master",
-      "type": "object",
-      "description": "Represents a master professional.",
-      "properties": {
-        "ownerId": { "type": "string" },
-        "name": { "type": "string" }
-      },
-      "required": ["ownerId", "name"]
-    },
-    "WorkOrder": {
-      "title": "WorkOrder",
-      "type": "object",
-      "description": "Represents a work order.",
-      "properties": {
-        "ownerId": { "type": "string" },
-        "orderNumber": { "type": "string" }
-      },
-      "required": ["ownerId"]
-    }
-  },
+  "entities": {},
   "auth": {
     "providers": ["password", "anonymous"]
   },
-  "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/entities/User" },
-      "description": "Stores user account and profile information."
-    },
-    "/clients/{clientId}": {
-      "schema": { "$ref": "#/entities/Client" },
-      "description": "Stores individual client records."
-    },
-    "/masters/{masterId}": {
-      "schema": { "$ref": "#/entities/Master" },
-      "description": "Stores master professional records."
-    },
-    "/work-orders/{workOrderId}": {
-      "schema": { "$ref": "#/entities/WorkOrder" },
-      "description": "Stores work order documents."
-    }
-  }
+  "firestore": {}
 }
