@@ -63,7 +63,7 @@ interface WorkOrderFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSave: (workOrderData: FormValues) => Promise<void>;
-  workOrder: z.infer<typeof workOrderSchema> | null;
+  workOrder: Partial<z.infer<typeof workOrderSchema>> | null;
   clients: Client[];
   masters: Master[];
 }
@@ -143,6 +143,17 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
         ? {
             ...workOrder,
             ownerId: workOrder.ownerId || user?.uid || '',
+            clientId: workOrder.clientId || '',
+            title: workOrder.title || '',
+            status: workOrder.status || 'draft',
+            items: workOrder.items || [],
+            subtotal: workOrder.subtotal || 0,
+            tax: workOrder.tax || 0,
+            surcharges: workOrder.surcharges || 0,
+            materialsCost: workOrder.materialsCost || 0,
+            applyTax: workOrder.applyTax || false,
+            total: workOrder.total || 0,
+            balance: workOrder.balance || 0,
             scheduledDate: workOrder.scheduledDate ? (workOrder.scheduledDate instanceof Timestamp ? workOrder.scheduledDate.toDate() : new Date(workOrder.scheduledDate)) : undefined,
             completionDate: workOrder.completionDate ? (workOrder.completionDate instanceof Timestamp ? workOrder.completionDate.toDate() : new Date(workOrder.completionDate)) : undefined,
             warrantyEndDate: workOrder.warrantyEndDate ? (workOrder.warrantyEndDate instanceof Timestamp ? workOrder.warrantyEndDate.toDate() : new Date(workOrder.warrantyEndDate)) : undefined,
@@ -240,9 +251,9 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{workOrder ? `Orden ${workOrder.orderNumber}` : 'Nueva Orden de Trabajo'}</DialogTitle>
+          <DialogTitle>{workOrder?.orderNumber ? `Orden ${workOrder.orderNumber}` : 'Nueva Orden de Trabajo'}</DialogTitle>
           <DialogDescription>
-            {workOrder ? 'Edita los detalles de la orden de trabajo.' : 'Rellena los datos para crear una nueva orden.'}
+            {workOrder?.orderNumber ? 'Edita los detalles de la orden de trabajo.' : 'Rellena los datos para crear una nueva orden.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -265,7 +276,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>Cliente</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                                     <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecciona un cliente" />
@@ -715,7 +726,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {workOrder ? 'Guardar Cambios' : 'Crear Orden'}
+                {workOrder?.id ? 'Guardar Cambios' : 'Crear Orden'}
               </Button>
             </DialogFooter>
           </form>

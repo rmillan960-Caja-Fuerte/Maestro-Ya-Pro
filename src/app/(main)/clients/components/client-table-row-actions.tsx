@@ -3,6 +3,7 @@
 
 import { Row, Table } from "@tanstack/react-table"
 import { MoreHorizontal } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -28,6 +29,7 @@ export function ClientTableRowActions<TData>({
   table,
 }: ClientTableRowActionsProps<TData>) {
   const { toast } = useToast();
+  const router = useRouter();
   const firestore = useFirestore();
   const meta = table.options.meta as { openForm: (client?: z.infer<typeof clientSchema>) => void } | undefined;
   const client = clientSchema.parse(row.original);
@@ -48,6 +50,10 @@ export function ClientTableRowActions<TData>({
         description: "No se pudo eliminar el cliente. Inténtalo de nuevo.",
       });
     }
+  }
+
+  const handleCreateOrder = () => {
+    router.push(`/work-orders?clientId=${client.id}`);
   }
 
   const openForm = () => {
@@ -72,7 +78,7 @@ export function ClientTableRowActions<TData>({
         <DropdownMenuItem onClick={() => toast({ title: "Próximamente", description: "La vista de perfil de cliente estará disponible pronto." })}>
           Ver Perfil
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => toast({ title: "Próximamente", description: "La creación de órdenes desde aquí estará disponible pronto." })}>
+        <DropdownMenuItem onClick={handleCreateOrder}>
           Crear Orden
         </DropdownMenuItem>
         <DropdownMenuSeparator />

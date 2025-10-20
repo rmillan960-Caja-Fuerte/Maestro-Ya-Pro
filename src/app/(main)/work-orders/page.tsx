@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useSearchParams } from 'next/navigation';
 import { collection, query, orderBy, where, doc } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import {
@@ -22,6 +23,8 @@ import type { Master } from '@/app/(main)/masters/data/schema';
 export default function WorkOrdersPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
+  const searchParams = useSearchParams();
+  const clientIdFromUrl = searchParams.get('clientId');
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -115,6 +118,7 @@ export default function WorkOrdersPage() {
             clients={clients || []}
             masters={masters || []}
             workOrdersCount={workOrders?.length || 0}
+            initialClientId={clientIdFromUrl}
           />
         )}
       </CardContent>

@@ -43,6 +43,7 @@ interface DataTableProps<TData, TValue> {
   clients: Client[]
   masters: Master[]
   workOrdersCount: number
+  initialClientId?: string | null;
 }
 
 export function WorkOrderTable<TData, TValue>({
@@ -50,7 +51,8 @@ export function WorkOrderTable<TData, TValue>({
   data,
   clients,
   masters,
-  workOrdersCount
+  workOrdersCount,
+  initialClientId,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -105,6 +107,21 @@ export function WorkOrderTable<TData, TValue>({
     }
   };
 
+  const openForm = React.useCallback((workOrder?: z.infer<typeof workOrderSchema>, clientId?: string | null) => {
+    let wo = workOrder || null;
+    if (!wo && clientId) {
+      // Create a partial work order object with just the client ID
+      wo = { clientId } as z.infer<typeof workOrderSchema>;
+    }
+    setSelectedWorkOrder(wo);
+    setIsFormOpen(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (initialClientId) {
+      openForm(undefined, initialClientId);
+    }
+  }, [initialClientId, openForm]);
 
   const table = useReactTable({
     data,
@@ -116,10 +133,7 @@ export function WorkOrderTable<TData, TValue>({
       columnFilters,
     },
     meta: {
-      openForm: (workOrder?: z.infer<typeof workOrderSchema>) => {
-        setSelectedWorkOrder(workOrder || null);
-        setIsFormOpen(true);
-      }
+      openForm: (workOrder?: z.infer<typeof workOrderSchema>) => openForm(workOrder)
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
