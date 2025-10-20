@@ -43,6 +43,9 @@ const ResultDisplay = ({ result }: { result: GenerateQuoteOutput }) => {
   const handleCopy = () => {
     navigator.clipboard.writeText(result.generatedDescription);
     setCopied(true);
+    toast({
+      title: "Copiado al portapapeles",
+    });
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -136,7 +139,7 @@ const ResultDisplay = ({ result }: { result: GenerateQuoteOutput }) => {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="prose-sm max-w-none text-card-foreground">
+        <CardContent className="prose-sm max-w-none rounded-lg border bg-muted/50 p-4 text-card-foreground">
           <p>{result.generatedDescription}</p>
         </CardContent>
       </Card>
