@@ -9,8 +9,8 @@ export const documentSchema = z.object({
 export const masterBaseSchema = z.object({
   id: z.string().optional(),
   ownerId: z.string(),
-  country: z.string().min(2, "El país es obligatorio.").optional(),
-  city: z.string().min(1, "La ciudad es obligatoria.").optional(),
+  country: z.string().min(2, "El país es obligatorio."),
+  city: z.string().min(1, "La ciudad es obligatoria."),
   firstName: z.string().min(1, { message: "El nombre es obligatorio." }),
   lastName: z.string().min(1, { message: "El apellido es obligatorio." }),
   email: z.string().email({ message: "Por favor, introduce un correo válido." }),
@@ -51,3 +51,5 @@ export const specialties = [
     { value: 'gardening', label: 'Jardinería' },
     { value: 'cleaning', label: 'Limpieza' },
 ];
+
+    

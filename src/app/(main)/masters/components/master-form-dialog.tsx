@@ -356,3 +356,5 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
     </Dialog>
   );
 }
+
+    
