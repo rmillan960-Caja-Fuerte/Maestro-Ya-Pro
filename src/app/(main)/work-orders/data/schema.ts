@@ -10,6 +10,15 @@ export const workOrderItemSchema = z.object({
   total: z.number(),
 });
 
+export const workOrderPaymentSchema = z.object({
+  id: z.string().optional(),
+  amount: z.number().min(0.1, 'El monto debe ser mayor a 0.'),
+  date: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]),
+  method: z.string().min(1, 'El método de pago es requerido.'),
+  reference: z.string().optional(),
+  type: z.enum(['advance', 'final', 'other']).default('other'),
+});
+
 export const workOrderSchema = z.object({
   id: z.string(),
   orderNumber: z.string(),
@@ -37,6 +46,8 @@ export const workOrderSchema = z.object({
   applyTax: z.boolean().default(false),
   tax: z.number().default(0),
   total: z.number().default(0),
+  balance: z.number().default(0),
+  payments: z.array(workOrderPaymentSchema).optional(),
   materialsProvidedBy: z.enum(['master', 'client']).default('master'),
   internalNotes: z.string().optional(),
   evidence: z.array(z.object({ url: z.string(), stage: z.enum(['before', 'during', 'after'])})).optional(),
@@ -44,10 +55,13 @@ export const workOrderSchema = z.object({
   updatedAt: z.union([z.instanceof(Timestamp), z.string()]).optional(),
   scheduledDate: z.union([z.instanceof(Date), z.string()]).optional(),
   completionDate: z.union([z.instanceof(Date), z.string()]).optional(),
+  warrantyEndDate: z.union([z.instanceof(Date), z.string()]).optional(),
 })
 
 export type WorkOrder = z.infer<typeof workOrderSchema>
 export type WorkOrderItem = z.infer<typeof workOrderItemSchema>
+export type WorkOrderPayment = z.infer<typeof workOrderPaymentSchema>
+
 
 export const statuses = [
   {

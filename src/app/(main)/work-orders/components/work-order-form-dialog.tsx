@@ -30,11 +30,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { workOrderSchema, statuses } from '../data/schema';
-import { Loader2, PlusCircle, Trash2, CalendarIcon, Info, DollarSign, Wrench, ImageIcon } from 'lucide-react';
+import { workOrderSchema, statuses, workOrderPaymentSchema } from '../data/schema';
+import { Loader2, PlusCircle, Trash2, CalendarIcon, ImageIcon, Banknote, FileDigit } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import type { Client } from '@/app/(main)/clients/data/schema';
 import type { Master } from '@/app/(main)/masters/data/schema';
 import { Timestamp } from 'firebase/firestore';
@@ -45,6 +45,8 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Switch } from '@/components/ui/switch';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = workOrderSchema.omit({ 
     id: true, 
@@ -65,11 +67,12 @@ interface WorkOrderFormDialogProps {
   masters: Master[];
 }
 
-const TAX_RATE = 0.15; // 15% IVA
-const MATERIAL_MARKUP_RATE = 0.15; // 15% recargo sobre materiales
+const TAX_RATE = 0.15;
+const MATERIAL_MARKUP_RATE = 0.15;
 
 export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, clients, masters }: WorkOrderFormDialogProps) {
   const [isSaving, setIsSaving] = React.useState(false);
+  const { toast } = useToast();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -84,6 +87,8 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
       materialsCost: 0,
       applyTax: false,
       total: 0,
+      balance: 0,
+      payments: [],
       materialsProvidedBy: 'master',
     }
   });
@@ -92,12 +97,18 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     control: form.control,
     name: "items",
   });
+  
+  const { fields: paymentFields, append: appendPayment, remove: removePayment } = useFieldArray({
+    control: form.control,
+    name: "payments",
+  });
 
   const items = form.watch('items');
   const surcharges = form.watch('surcharges');
   const materialsProvidedBy = form.watch('materialsProvidedBy');
   const materialsCost = form.watch('materialsCost');
   const applyTax = form.watch('applyTax');
+  const payments = form.watch('payments');
   
   React.useEffect(() => {
     if (isOpen) {
@@ -105,6 +116,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
         ? {
             ...workOrder,
             scheduledDate: workOrder.scheduledDate ? (workOrder.scheduledDate instanceof Timestamp ? workOrder.scheduledDate.toDate() : new Date(workOrder.scheduledDate)) : undefined,
+            payments: workOrder.payments?.map(p => ({...p, date: p.date instanceof Timestamp ? p.date.toDate() : new Date(p.date) })) || [],
           }
         : {
             clientId: '',
@@ -117,6 +129,8 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             materialsCost: 0,
             applyTax: false,
             total: 0,
+            balance: 0,
+            payments: [],
             materialsProvidedBy: 'master',
         };
         form.reset(defaultValues);
@@ -134,11 +148,16 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     const baseForTax = subtotal + (surcharges || 0) + materialsTotal;
     const taxAmount = applyTax ? baseForTax * TAX_RATE : 0;
     const total = baseForTax + taxAmount;
+    
+    const totalPaid = payments?.reduce((acc, p) => acc + p.amount, 0) || 0;
+    const balance = total - totalPaid;
 
     form.setValue('subtotal', subtotal);
     form.setValue('tax', taxAmount);
     form.setValue('total', total);
-  }, [items, surcharges, materialsProvidedBy, materialsCost, applyTax, form]);
+    form.setValue('balance', balance);
+
+  }, [items, surcharges, materialsProvidedBy, materialsCost, applyTax, payments, form]);
 
 
   const handleSubmit = async (values: FormValues) => {
@@ -156,6 +175,20 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     }
   };
 
+  const handleAddPayment = () => {
+    // Simple implementation for now. A more complex one might use another dialog.
+    const amount = parseFloat(prompt('Monto del pago:') || '0');
+    if(amount > 0) {
+      appendPayment({
+        amount,
+        date: new Date(),
+        method: 'Efectivo', // Default, could be a select
+        type: 'other'
+      });
+      toast({ title: 'Pago registrado', description: 'El pago ha sido añadido a la lista.' });
+    }
+  }
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -168,277 +201,342 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 flex flex-col overflow-hidden">
-            <Tabs defaultValue="general" className="flex-1 flex flex-col overflow-hidden">
-                <TabsList className="w-full grid grid-cols-4">
+            <Tabs defaultValue="quote" className="flex-1 flex flex-col overflow-hidden">
+                <TabsList className="w-full grid grid-cols-5">
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="quote">Cotización</TabsTrigger>
                     <TabsTrigger value="logistics">Logística</TabsTrigger>
+                    <TabsTrigger value="payments">Pagos</TabsTrigger>
                     <TabsTrigger value="evidence">Evidencia</TabsTrigger>
                 </TabsList>
                 
                 <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                    <TabsContent value="general" className="mt-0">
-                         <div className="space-y-4">
-                            <FormField
-                                control={form.control}
-                                name="clientId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Cliente</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecciona un cliente" />
-                                        </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                        {clients.map((client) => (
-                                            <SelectItem key={client.id} value={client.id}>
-                                            {client.type === 'business' ? client.businessName : `${client.firstName} ${client.lastName}`}
-                                            </SelectItem>
-                                        ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="title"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Título del Trabajo</FormLabel>
-                                        <FormControl><Input placeholder="Ej: Pintura de apartamento completo" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Estado</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecciona un estado" />
-                                        </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                        {statuses.map((status) => (
-                                            <SelectItem key={status.value} value={status.value}>
-                                            {status.label}
-                                            </SelectItem>
-                                        ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </TabsContent>
-                    <TabsContent value="quote" className="mt-0">
-                        <div className="space-y-4">
-                            <div>
-                                <h3 className="text-lg font-medium mb-2">Ítems de Servicio</h3>
-                                <div className="space-y-2">
-                                    {fields.map((field, index) => (
-                                        <div key={field.id} className="grid grid-cols-[1fr_80px_120px_120px_auto] gap-2 items-start">
-                                            <FormField
-                                                control={form.control}
-                                                name={`items.${index}.description`}
-                                                render={({ field }) => <FormItem><FormControl><Textarea placeholder="Descripción del item" {...field} rows={1} /></FormControl><FormMessage /></FormItem>}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name={`items.${index}.quantity`}
-                                                render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="Cant." {...field} onChange={e => handleItemChange(index, 'quantity', +e.target.value)} /></FormControl><FormMessage /></FormItem>}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name={`items.${index}.unitPrice`}
-                                                render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="P. Unitario" {...field} onChange={e => handleItemChange(index, 'unitPrice', +e.target.value)} /></FormControl><FormMessage /></FormItem>}
-                                            />
-                                            <div className="flex items-center h-10">
-                                                <p>{formatCurrency(items?.[index]?.total || 0)}</p>
-                                            </div>
-                                            <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                                        </div>
+                    <TabsContent value="general" className="mt-0 space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="clientId"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Cliente</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona un cliente" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {clients.map((client) => (
+                                        <SelectItem key={client.id} value={client.id}>
+                                        {client.type === 'business' ? client.businessName : `${client.firstName} ${client.lastName}`}
+                                        </SelectItem>
                                     ))}
-                                </div>
-                                <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="mt-2"
-                                onClick={() => append({ description: '', quantity: 1, unitPrice: 0, total: 0 })}
-                                >
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Añadir Ítem
-                                </Button>
-                            </div>
-
-                            <Separator />
-                            
-                            <FormField
-                                control={form.control}
-                                name="surcharges"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Recargos (Nocturno, Feriado, etc.)</FormLabel>
-                                        <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(+e.target.value)} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="w-full max-w-sm ml-auto space-y-2">
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Subtotal Servicios:</span>
-                                    <span>{formatCurrency(form.getValues('subtotal'))}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Recargos:</span>
-                                    <span>{formatCurrency(form.getValues('surcharges') || 0)}</span>
-                                </div>
-                                {materialsProvidedBy === 'master' && (
-                                  <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Materiales (+15%):</span>
-                                      <span>{formatCurrency((materialsCost || 0) * (1 + MATERIAL_MARKUP_RATE))}</span>
-                                  </div>
-                                )}
-                                <div className="flex justify-between items-center">
-                                    <FormField
-                                        control={form.control}
-                                        name="applyTax"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                                <FormLabel className="font-normal text-muted-foreground">Aplicar IVA (15%)</FormLabel>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <span>{formatCurrency(form.getValues('tax'))}</span>
-                                </div>
-                                <Separator />
-                                <div className="flex justify-between font-bold text-lg">
-                                    <span>Total:</span>
-                                    <span>{formatCurrency(form.getValues('total'))}</span>
-                                </div>
-                            </div>
-                        </div>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="title"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Título del Trabajo</FormLabel>
+                                    <FormControl><Input placeholder="Ej: Pintura de apartamento completo" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="status"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Estado</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona un estado" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {statuses.map((status) => (
+                                        <SelectItem key={status.value} value={status.value}>
+                                        {status.label}
+                                        </SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     </TabsContent>
-                    <TabsContent value="logistics" className="mt-0">
-                        <div className="space-y-4">
-                            <FormField
-                                control={form.control}
-                                name="scheduledDate"
-                                render={({ field }) => (
-                                  <FormItem className="flex flex-col">
-                                    <FormLabel>Fecha Agendada</FormLabel>
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <FormControl>
-                                          <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                              "w-full pl-3 text-left font-normal",
-                                              !field.value && "text-muted-foreground"
-                                            )}
-                                          >
-                                            {field.value ? (
-                                              format(field.value, "PPP", { locale: es })
-                                            ) : (
-                                              <span>Selecciona una fecha</span>
-                                            )}
-                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                          </Button>
-                                        </FormControl>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                          mode="single"
-                                          selected={field.value}
-                                          onSelect={field.onChange}
-                                          disabled={(date) =>
-                                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                                          }
-                                          initialFocus
+                    <TabsContent value="quote" className="mt-0 space-y-4">
+                        <div>
+                            <h3 className="text-lg font-medium mb-2">Ítems de Servicio</h3>
+                            <div className="space-y-2">
+                                {fields.map((field, index) => (
+                                    <div key={field.id} className="grid grid-cols-[1fr_80px_120px_120px_auto] gap-2 items-start">
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.description`}
+                                            render={({ field }) => <FormItem><FormControl><Textarea placeholder="Descripción del item" {...field} rows={1} /></FormControl><FormMessage /></FormItem>}
                                         />
-                                      </PopoverContent>
-                                    </Popover>
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.quantity`}
+                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="Cant." {...field} onChange={e => handleItemChange(index, 'quantity', +e.target.value)} /></FormControl><FormMessage /></FormItem>}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`items.${index}.unitPrice`}
+                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="P. Unitario" {...field} onChange={e => handleItemChange(index, 'unitPrice', +e.target.value)} /></FormControl><FormMessage /></FormItem>}
+                                        />
+                                        <div className="flex items-center h-10">
+                                            <p>{formatCurrency(items?.[index]?.total || 0)}</p>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                ))}
+                            </div>
+                            <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => append({ description: '', quantity: 1, unitPrice: 0, total: 0 })}
+                            >
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Añadir Ítem
+                            </Button>
+                        </div>
+
+                        <Separator />
+                        
+                        <FormField
+                            control={form.control}
+                            name="surcharges"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Recargos (Nocturno, Feriado, etc.)</FormLabel>
+                                    <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(+e.target.value)} /></FormControl>
                                     <FormMessage />
-                                  </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="masterId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Maestro Asignado</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Asigna un maestro" />
-                                        </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                        {masters.map((master) => (
-                                            <SelectItem key={master.id} value={master.id!}>
-                                            {`${master.firstName} ${master.lastName}`}
-                                            </SelectItem>
-                                        ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="materialsProvidedBy"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Materiales Proveídos Por</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecciona quién provee los materiales" />
-                                        </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="master">Maestro (Empresa)</SelectItem>
-                                            <SelectItem value="client">Cliente</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                                </FormItem>
+                            )}
+                        />
+
+                        <div className="w-full max-w-sm ml-auto space-y-2">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Subtotal Servicios:</span>
+                                <span>{formatCurrency(form.getValues('subtotal'))}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Recargos:</span>
+                                <span>{formatCurrency(form.getValues('surcharges') || 0)}</span>
+                            </div>
                             {materialsProvidedBy === 'master' && (
+                              <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Materiales (+15%):</span>
+                                  <span>{formatCurrency((materialsCost || 0) * (1 + MATERIAL_MARKUP_RATE))}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center">
                                 <FormField
                                     control={form.control}
-                                    name="materialsCost"
+                                    name="applyTax"
                                     render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Costo de Materiales (sin recargo)</FormLabel>
-                                            <FormControl>
-                                                <Input 
-                                                    type="number" 
-                                                    placeholder="0.00" 
-                                                    {...field} 
-                                                    onChange={e => field.onChange(+e.target.value)} 
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
+                                        <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                            <FormLabel className="font-normal text-muted-foreground">Aplicar IVA (15%)</FormLabel>
                                         </FormItem>
                                     )}
                                 />
+                                <span>{formatCurrency(form.getValues('tax'))}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between font-bold text-lg">
+                                <span>Total:</span>
+                                <span>{formatCurrency(form.getValues('total'))}</span>
+                            </div>
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="logistics" className="mt-0 space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="scheduledDate"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                                <FormLabel>Fecha Agendada</FormLabel>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <FormControl>
+                                      <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                          "w-full pl-3 text-left font-normal",
+                                          !field.value && "text-muted-foreground"
+                                        )}
+                                      >
+                                        {field.value ? (
+                                          format(field.value, "PPP", { locale: es })
+                                        ) : (
+                                          <span>Selecciona una fecha</span>
+                                        )}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                      </Button>
+                                    </FormControl>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={field.value as Date | undefined}
+                                      onSelect={field.onChange}
+                                      disabled={(date) =>
+                                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                                      }
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                              </FormItem>
                             )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="masterId"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Maestro Asignado</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Asigna un maestro" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    {masters.map((master) => (
+                                        <SelectItem key={master.id} value={master.id!}>
+                                        {`${master.firstName} ${master.lastName}`}
+                                        </SelectItem>
+                                    ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="materialsProvidedBy"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Materiales Proveídos Por</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona quién provee los materiales" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="master">Maestro (Empresa)</SelectItem>
+                                        <SelectItem value="client">Cliente</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        {materialsProvidedBy === 'master' && (
+                            <FormField
+                                control={form.control}
+                                name="materialsCost"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Costo de Materiales (sin recargo)</FormLabel>
+                                        <FormControl>
+                                            <Input 
+                                                type="number" 
+                                                placeholder="0.00" 
+                                                {...field} 
+                                                onChange={e => field.onChange(+e.target.value)} 
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+                    </TabsContent>
+                    <TabsContent value="payments" className="mt-0 space-y-4">
+                        <div className='grid grid-cols-3 gap-4 text-center'>
+                           <div className='rounded-lg border bg-card text-card-foreground shadow-sm p-4'>
+                                <h4 className='text-sm font-medium text-muted-foreground'>Total Orden</h4>
+                                <p className='text-2xl font-bold'>{formatCurrency(form.getValues('total'))}</p>
+                           </div>
+                           <div className='rounded-lg border bg-card text-card-foreground shadow-sm p-4'>
+                                <h4 className='text-sm font-medium text-muted-foreground'>Total Pagado</h4>
+                                <p className='text-2xl font-bold text-green-600'>{formatCurrency(payments?.reduce((acc, p) => acc + p.amount, 0) || 0)}</p>
+                           </div>
+                           <div className='rounded-lg border bg-card text-card-foreground shadow-sm p-4'>
+                                <h4 className='text-sm font-medium text-muted-foreground'>Saldo Pendiente</h4>
+                                <p className='text-2xl font-bold text-destructive'>{formatCurrency(form.getValues('balance'))}</p>
+                           </div>
+                        </div>
+
+                        <Separator/>
+
+                        <div>
+                            <div className='flex justify-between items-center mb-2'>
+                                <h3 className="text-lg font-medium">Historial de Pagos</h3>
+                                <Button type="button" size="sm" onClick={handleAddPayment}>
+                                    <Banknote className="mr-2 h-4 w-4" /> Registrar Pago
+                                </Button>
+                            </div>
+                            <div className="rounded-md border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead>Método</TableHead>
+                                            <TableHead className="text-right">Monto</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {paymentFields.length > 0 ? paymentFields.map((field, index) => (
+                                            <TableRow key={field.id}>
+                                                <TableCell>{formatDate(form.getValues(`payments.${index}.date`) as Date, 'short')}</TableCell>
+                                                <TableCell>{form.getValues(`payments.${index}.method`)}</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(form.getValues(`payments.${index}.amount`))}</TableCell>
+                                                <TableCell>
+                                                     <Button type="button" variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => removePayment(index)}><Trash2 className="h-4 w-4" /></Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className='text-center text-muted-foreground h-24'>Aún no se han registrado pagos.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className='space-y-2'>
+                             <h3 className="text-lg font-medium">Generar Recibos</h3>
+                             <div className='flex gap-4'>
+                                <Button type='button' variant='outline' disabled>
+                                    <FileDigit className="mr-2 h-4 w-4" /> Generar Recibo Anticipo (30%)
+                                </Button>
+                                <Button type='button' variant='outline' disabled>
+                                    <FileDigit className="mr-2 h-4 w-4" /> Generar Recibo Final
+                                </Button>
+                             </div>
+                             <p className='text-xs text-muted-foreground'>Esta funcionalidad estará disponible próximamente.</p>
                         </div>
                     </TabsContent>
                     <TabsContent value="evidence" className="mt-0">
@@ -468,5 +566,3 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     </Dialog>
   );
 }
-
-    
