@@ -6,7 +6,6 @@ import {
   ColumnDef,
   ColumnFiltersState,
   FilterFn,
-  getGlobalFilteredRowModel,
   SortingState,
   VisibilityState,
   flexRender,
@@ -57,7 +56,7 @@ export function MasterTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({ globalFilter: false, name: false })
+    React.useState<VisibilityState>({ globalFilter: false, name: true })
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
@@ -138,7 +137,6 @@ export function MasterTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    getGlobalFilteredRowModel: getGlobalFilteredRowModel(),
   })
 
   return (

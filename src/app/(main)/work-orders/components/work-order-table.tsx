@@ -16,7 +16,6 @@ import {
   getSortedRowModel,
   useReactTable,
   FilterFn,
-  getGlobalFilteredRowModel,
 } from "@tanstack/react-table"
 import {
   Table,
@@ -84,7 +83,7 @@ export function WorkOrderTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({ globalFilter: false, title: false })
+    React.useState<VisibilityState>({ globalFilter: false, title: true })
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
@@ -183,7 +182,6 @@ export function WorkOrderTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    getGlobalFilteredRowModel: getGlobalFilteredRowModel(),
   })
 
   return (

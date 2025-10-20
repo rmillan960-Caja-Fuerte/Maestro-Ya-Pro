@@ -16,7 +16,6 @@ import {
   getSortedRowModel,
   useReactTable,
   Table as ReactTable,
-  getGlobalFilteredRowModel,
   FilterFn,
 } from "@tanstack/react-table"
 
@@ -64,7 +63,7 @@ export function ClientTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({ globalFilter: false, name: false })
+    React.useState<VisibilityState>({ globalFilter: false, name: true })
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
@@ -160,7 +159,6 @@ export function ClientTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    getGlobalFilteredRowModel: getGlobalFilteredRowModel(),
   })
 
 
