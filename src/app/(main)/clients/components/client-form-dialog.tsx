@@ -49,7 +49,7 @@ export function ClientFormDialog({ isOpen, onOpenChange, onSave, client }: Clien
   const { user } = useUser();
   
   const form = useForm<FormValues>({
-    resolver: zodResolver(clientSchema.omit({ id: true })),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       ownerId: '',
       type: 'individual',
