@@ -337,7 +337,7 @@ export function MasterFormDialog({ isOpen, onOpenChange, onSave, master }: Maste
               </div>
             </div>
             
-            <DialogFooter className="pt-4">
+            <DialogFooter className="pt-4 sticky bottom-0 bg-background z-10">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
                 Cancelar
               </Button>
