@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -15,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -30,7 +28,6 @@ import {
   Settings,
   CreditCard,
   LogOut,
-  Badge,
 } from 'lucide-react';
 import AppSidebar from './sidebar';
 import { usePathname, useRouter } from 'next/navigation';
@@ -65,7 +62,7 @@ export default function AppHeader() {
     const items = pathParts.map((part, index) => {
       const href = '/' + pathParts.slice(0, index + 1).join('/');
       const isLast = index === pathParts.length - 1;
-      const name = part.charAt(0).toUpperCase() + part.slice(1).replace('-', ' ');
+      const name = part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, ' ');
       return (
         <React.Fragment key={href}>
           <BreadcrumbSeparator />
@@ -146,20 +143,18 @@ export default function AppHeader() {
             <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Perfil</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <CreditCard className="mr-2 h-4 w-4" />
-              <span>Facturación</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Configuración</span>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
+          <DropdownMenuItem>
+            <User className="mr-2 h-4 w-4" />
+            <span>Perfil</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <CreditCard className="mr-2 h-4 w-4" />
+            <span>Facturación</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Configuración</span>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <div className="flex items-center w-full cursor-pointer">
