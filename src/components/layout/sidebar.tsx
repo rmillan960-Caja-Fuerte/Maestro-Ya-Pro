@@ -4,19 +4,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  AreaChart,
-  Box,
-  CalendarDays,
   Construction,
-  FilePieChart,
   FileText,
-  Landmark,
   LayoutGrid,
-  MessageSquare,
   Settings,
   Sparkles,
   Users,
-  UsersRound,
 } from 'lucide-react';
 import {
   Tooltip,
