@@ -44,6 +44,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { startOfMonth, subMonths, getMonth } from 'date-fns';
 
+
 const revenueChartConfig = {
   revenue: {
     label: 'Ingresos',
@@ -87,8 +88,8 @@ export default function DashboardPage() {
   );
 
   // Data fetching - useCollection will not run if query is null
-  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery);
-  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
+  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!user);
+  const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery, !!user);
 
   const isLoading = isAuthLoading || (user && (isLoadingWorkOrders || isLoadingClients));
 
@@ -363,3 +364,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
