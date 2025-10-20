@@ -5,62 +5,33 @@
       "description": "Represents a user's profile information.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "role": { "type": "string" },
-        "permissions": { "type": "array", "items": { "type": "string" } },
-        "firstName": { "type": "string" },
-        "lastName": { "type": "string" },
-        "photoUrl": { "type": "string", "format": "uri" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "isActive": { "type": "boolean" }
+        "uid": { "type": "string", "description": "Firebase Authentication user ID." },
+        "email": { "type": "string", "format": "email", "description": "User's email address." },
+        "firstName": { "type": "string", "description": "User's first name." },
+        "lastName": { "type": "string", "description": "User's last name." },
+        "role": { "type": "string", "description": "User's role (e.g., SUPER_ADMIN, OPERATOR)." },
+        "permissions": { "type": "array", "items": { "type": "string" }, "description": "Specific action permissions." },
+        "country": { "type": "string", "description": "Country code the user operates in (e.g., EC, VE).", "optional": true },
+        "isActive": { "type": "boolean", "description": "Whether the user account is active." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of user creation." }
       },
-      "required": ["uid", "email", "role", "firstName", "lastName"]
-    },
-    "Client": {
-      "title": "Client",
-      "description": "Represents a client.",
-      "type": "object",
-      "properties": {
-        "ownerId": { "type": "string" },
-        "country": { "type": "string", "description": "ISO 3166-1 alpha-2 country code." },
-        "city": { "type": "string" },
-        "type": { "type": "string", "enum": ["individual", "business"] },
-        "firstName": { "type": "string" },
-        "lastName": { "type": "string" },
-        "businessName": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "primaryPhone": { "type": "string" },
-        "status": { "type": "string", "enum": ["active", "inactive", "pending"] }
-      },
-      "required": ["ownerId", "country", "type", "email", "primaryPhone", "status"]
+      "required": ["uid", "email", "firstName", "lastName", "role", "isActive", "createdAt"]
     },
     "Master": {
       "title": "Master",
       "description": "Represents a professional/master.",
       "type": "object",
       "properties": {
-        "ownerId": { "type": "string" },
-        "country": { "type": "string", "description": "ISO 3166-1 alpha-2 country code." },
-        "city": { "type": "string" },
-        "firstName": { "type": "string" },
-        "lastName": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "phone": { "type": "string" },
-        "specialties": { "type": "array", "items": { "type": "string" } },
-        "coverageZones": { "type": "array", "items": { "type": "string" } },
-        "rating": { "type": "number" },
-        "status": { "type": "string", "enum": ["active", "inactive", "pending_verification"] },
-        "documents": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": { "type": "string" },
-              "url": { "type": "string", "format": "uri" }
-            }
-          }
-        }
+        "ownerId": { "type": "string", "description": "The UID of the user who owns this record." },
+        "country": { "type": "string", "description": "Country code (e.g., EC, VE)." },
+        "city": { "type": "string", "description": "City code (e.g., UIO, CCS)." },
+        "firstName": { "type": "string", "description": "Master's first name." },
+        "lastName": { "type": "string", "description": "Master's last name." },
+        "email": { "type": "string", "format": "email", "description": "Master's email." },
+        "phone": { "type": "string", "description": "Master's phone number." },
+        "specialties": { "type": "array", "items": { "type": "string" }, "description": "List of professional specialties." },
+        "coverageZones": { "type": "array", "items": { "type": "string" }, "description": "List of service coverage zones." },
+        "status": { "type": "string", "enum": ["active", "inactive", "pending_verification"], "description": "Current status of the master." }
       },
       "required": ["ownerId", "country", "city", "firstName", "lastName", "email", "phone", "specialties", "status"]
     },
@@ -69,33 +40,28 @@
       "description": "Represents a work order.",
       "type": "object",
       "properties": {
-         "ownerId": { "type": "string" },
-         "country": { "type": "string", "description": "ISO 3166-1 alpha-2 country code." },
-         "orderNumber": { "type": "string" },
-         "clientId": { "type": "string" },
-         "masterId": { "type": "string" },
-         "status": { "type": "string" },
-         "title": { "type": "string" },
-         "total": { "type": "number" },
-         "createdAt": { "type": "string", "format": "date-time" }
+         "ownerId": { "type": "string", "description": "The UID of the user who owns this record." },
+         "country": { "type": "string", "description": "Country code for the order." },
+         "orderNumber": { "type": "string", "description": "Unique identifier for the work order." },
+         "clientId": { "type": "string", "description": "ID of the associated client." },
+         "masterId": { "type": "string", "description": "ID of the assigned master.", "optional": true },
+         "status": { "type": "string", "description": "Current status of the work order." },
+         "title": { "type": "string", "description": "Title of the work order." },
+         "total": { "type": "number", "description": "Total amount for the work order." },
+         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of work order creation." }
       },
       "required": ["ownerId", "country", "orderNumber", "clientId", "status", "title", "total", "createdAt"]
     }
   },
   "auth": {
     "providers": [
-      "password",
-      "google.com"
+      "password"
     ]
   },
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
       "description": "Stores user profile information."
-    },
-    "/clients/{clientId}": {
-      "schema": { "$ref": "#/entities/Client" },
-      "description": "Stores client information."
     },
     "/masters/{masterId}": {
       "schema": { "$ref": "#/entities/Master" },

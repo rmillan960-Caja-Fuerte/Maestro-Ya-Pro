@@ -84,7 +84,7 @@ export default function DashboardPage() {
         q = query(q, where('country', '==', selectedCountry));
       }
     } else {
-      q = query(q, where('ownerId', '==', user.uid), where('country', '==', userProfile.country));
+      q = query(q, where('country', '==', userProfile.country));
     }
     
     return query(q, orderBy('createdAt', 'desc'));
@@ -129,10 +129,7 @@ export default function DashboardPage() {
     const totalQuotesCount = workOrders.filter(wo => wo.status !== 'draft').length;
     const conversionRate = totalQuotesCount > 0 ? (approvedQuotesCount / totalQuotesCount) * 100 : 0;
     
-    const recentOrders = workOrders.slice(0, 5).map(wo => ({
-      ...wo,
-      clientName: wo.clientName || 'Cliente Desconocido',
-    }));
+    const recentOrders = workOrders.slice(0, 5);
 
     // Revenue Chart Data
     const monthlyRevenueData: { [key: number]: number } = {};
@@ -349,7 +346,7 @@ export default function DashboardPage() {
               {dashboardData.recentOrders.map((order) => (
                 <TableRow key={order.orderNumber}>
                   <TableCell>
-                    <div className="font-medium">{order.clientName}</div>
+                    <div className="font-medium">{order.clientName || 'Cliente no asignado'}</div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     {order.orderNumber}

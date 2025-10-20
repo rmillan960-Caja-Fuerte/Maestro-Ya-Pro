@@ -45,9 +45,11 @@ export default function AppSidebar({ isMobile = false, userRole }: { isMobile?: 
     if (item.href === '/users') {
         return userRole === 'SUPER_ADMIN';
     }
-    // For now, other items are visible if they don't have a specific permission or the user has it.
-    // This can be tightened later.
-    return !item.requiredPermission || userPermissions.includes(item.requiredPermission);
+    // Simple logic for now: hide if permission is required but user doesn't have it.
+    if (item.requiredPermission && !userPermissions.includes(item.requiredPermission)) {
+        return false;
+    }
+    return true;
   });
 
   const navContent = (
