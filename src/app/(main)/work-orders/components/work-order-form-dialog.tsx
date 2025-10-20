@@ -31,7 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { workOrderSchema, statuses } from '../data/schema';
 import { specialties } from '../../masters/data/schema';
-import { Loader2, PlusCircle, Trash2, CalendarIcon, ImageIcon, Banknote, FileDigit, Star } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, CalendarIcon, ImageIcon, Banknote, FileDigit, Star, Clock } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -48,6 +48,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const formSchema = workOrderSchema.omit({ 
     id: true, 
@@ -91,6 +92,14 @@ const StarRating = ({ value, onValueChange }: { value: number, onValueChange: (v
     );
 };
 
+const timeSlots = Array.from({ length: 20 }, (_, i) => {
+    const hour = 8 + Math.floor(i / 2);
+    const minute = (i % 2) * 30;
+    const formattedHour = hour.toString().padStart(2, '0');
+    const formattedMinute = minute.toString().padStart(2, '0');
+    return `${formattedHour}:${formattedMinute}`;
+});
+
 export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, clients, masters }: WorkOrderFormDialogProps) {
   const [isSaving, setIsSaving] = React.useState(false);
   const { toast } = useToast();
@@ -116,6 +125,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
       rating: 0,
       review: '',
       category: '',
+      scheduledTime: '09:00',
     }
   });
 
@@ -155,6 +165,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             total: workOrder.total || 0,
             balance: workOrder.balance || 0,
             scheduledDate: workOrder.scheduledDate ? (workOrder.scheduledDate instanceof Timestamp ? workOrder.scheduledDate.toDate() : new Date(workOrder.scheduledDate)) : undefined,
+            scheduledTime: workOrder.scheduledTime || '09:00',
             completionDate: workOrder.completionDate ? (workOrder.completionDate instanceof Timestamp ? workOrder.completionDate.toDate() : new Date(workOrder.completionDate)) : undefined,
             warrantyEndDate: workOrder.warrantyEndDate ? (workOrder.warrantyEndDate instanceof Timestamp ? workOrder.warrantyEndDate.toDate() : new Date(workOrder.warrantyEndDate)) : undefined,
             payments: workOrder.payments?.map(p => ({...p, date: p.date instanceof Timestamp ? p.date.toDate() : new Date(p.date) })) || [],
@@ -180,6 +191,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             rating: 0,
             review: '',
             category: '',
+            scheduledTime: '09:00',
         };
         form.reset(defaultValues);
     }
@@ -357,11 +369,11 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                     <TabsContent value="quote" className="mt-0 space-y-4">
                          <div>
                             <h3 className="text-lg font-medium mb-2">Ítems de Servicio</h3>
-                            <div className="grid grid-cols-[1fr_80px_120px_120px_auto] gap-x-2 items-center mb-1">
-                                <FormLabel>Descripción</FormLabel>
-                                <FormLabel>Cant.</FormLabel>
-                                <FormLabel>P. Unitario</FormLabel>
-                                <FormLabel className="text-right">Total</FormLabel>
+                            <div className="grid grid-cols-[1fr_80px_120px_120px_auto] gap-x-2 items-center mb-1 px-1">
+                                <Label>Descripción</Label>
+                                <Label>Cant.</Label>
+                                <Label>P. Unitario</Label>
+                                <Label className="text-right">Total</Label>
                                 <span className="w-8"></span>
                             </div>
                             <div className="space-y-2">
@@ -375,12 +387,12 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.quantity`}
-                                            render={({ field }) => <FormItem><FormControl><Input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="Cant." {...field} onChange={e => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
+                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="Cant." {...field} onChange={e => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
                                         />
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.unitPrice`}
-                                            render={({ field }) => <FormItem><FormControl><Input type="text" inputMode="numeric" pattern="[0-9.]*" placeholder="P. Unitario" {...field} onChange={e => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
+                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="P. Unitario" {...field} onChange={e => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
                                         />
                                         <div className="flex items-center h-10 justify-end">
                                             <p>{formatCurrency(items?.[index]?.total || 0)}</p>
@@ -451,163 +463,200 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                         </div>
                     </TabsContent>
                     <TabsContent value="logistics" className="mt-0 space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="scheduledDate"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-col">
-                                <FormLabel>Fecha Agendada</FormLabel>
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <FormControl>
-                                      <Button
-                                        variant={"outline"}
-                                        className={cn(
-                                          "w-full pl-3 text-left font-normal",
-                                          !field.value && "text-muted-foreground"
-                                        )}
-                                      >
-                                        {field.value ? (
-                                          format(field.value, "PPP", { locale: es })
-                                        ) : (
-                                          <span>Selecciona una fecha</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                      </Button>
-                                    </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                      mode="single"
-                                      selected={field.value as Date | undefined}
-                                      onSelect={field.onChange}
-                                      disabled={(date) =>
-                                        date < new Date(new Date().setHours(0, 0, 0, 0))
-                                      }
-                                      initialFocus
-                                    />
-                                  </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="masterId"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Maestro Asignado</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Asigna un maestro" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {masters.map((master) => (
-                                        <SelectItem key={master.id} value={master.id!}>
-                                        {`${master.firstName} ${master.lastName}`}
-                                        </SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="materialsProvidedBy"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Materiales Proveídos Por</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona quién provee los materiales" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="master">Maestro (Empresa)</SelectItem>
-                                        <SelectItem value="client">Cliente</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        {materialsProvidedBy === 'master' && (
-                            <FormField
-                                control={form.control}
-                                name="materialsCost"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Costo de Materiales (sin recargo)</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                type="number" 
-                                                placeholder="0.00" 
-                                                {...field} 
-                                                onChange={e => field.onChange(+e.target.value)} 
+                        <Card>
+                            <CardHeader><CardTitle className="text-lg">Agendamiento</CardTitle></CardHeader>
+                            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="scheduledDate"
+                                    render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Fecha de Inicio</FormLabel>
+                                        <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value ? (
+                                                format(field.value, "PPP", { locale: es })
+                                                ) : (
+                                                <span>Selecciona una fecha</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                            mode="single"
+                                            selected={field.value as Date | undefined}
+                                            onSelect={field.onChange}
+                                            disabled={(date) =>
+                                                date < new Date(new Date().setHours(0, 0, 0, 0))
+                                            }
+                                            initialFocus
                                             />
-                                        </FormControl>
+                                        </PopoverContent>
+                                        </Popover>
                                         <FormMessage />
                                     </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="scheduledTime"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                        <FormLabel>Hora de Inicio</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                            <SelectTrigger>
+                                                <Clock className="mr-2 h-4 w-4 opacity-50"/>
+                                                <SelectValue placeholder="Selecciona una hora" />
+                                            </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                            {timeSlots.map((time) => (
+                                                <SelectItem key={time} value={time}>
+                                                    {time}
+                                                </SelectItem>
+                                            ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader><CardTitle className="text-lg">Asignación y Materiales</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="masterId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Maestro Asignado</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Asigna un maestro" />
+                                            </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                            {masters.map((master) => (
+                                                <SelectItem key={master.id} value={master.id!}>
+                                                {`${master.firstName} ${master.lastName}`}
+                                                </SelectItem>
+                                            ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="materialsProvidedBy"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Materiales Proveídos Por</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecciona quién provee los materiales" />
+                                            </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="master">Maestro (Empresa)</SelectItem>
+                                                <SelectItem value="client">Cliente</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                {materialsProvidedBy === 'master' && (
+                                    <FormField
+                                        control={form.control}
+                                        name="materialsCost"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Costo de Materiales (sin recargo)</FormLabel>
+                                                <FormControl>
+                                                    <Input 
+                                                        type="number" 
+                                                        placeholder="0.00" 
+                                                        {...field} 
+                                                        onChange={e => field.onChange(+e.target.value)} 
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 )}
-                            />
-                        )}
-                         <Separator />
-                        <div className="space-y-4">
-                            <FormField
-                                control={form.control}
-                                name="completionDate"
-                                render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                    <FormLabel>Fecha de Finalización</FormLabel>
-                                    <Popover>
-                                    <PopoverTrigger asChild>
-                                        <FormControl>
-                                        <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                            "w-full pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                            )}
-                                        >
-                                            {field.value ? (
-                                            format(new Date(field.value), "PPP", { locale: es })
-                                            ) : (
-                                            <span>Selecciona una fecha</span>
-                                            )}
-                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                        </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                        mode="single"
-                                        selected={field.value as Date | undefined}
-                                        onSelect={field.onChange}
-                                        initialFocus
-                                        />
-                                    </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="warrantyEndDate"
-                                render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                    <FormLabel>Fin de Garantía (90 días)</FormLabel>
-                                    <Input value={field.value ? format(new Date(field.value), "PPP", { locale: es }) : 'Se calculará al finalizar'} disabled />
-                                </FormItem>
-                                )}
-                            />
-                        </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader><CardTitle className="text-lg">Cierre y Garantía</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="completionDate"
+                                    render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Fecha de Finalización</FormLabel>
+                                        <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value ? (
+                                                format(new Date(field.value), "PPP", { locale: es })
+                                                ) : (
+                                                <span>Selecciona una fecha</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                            mode="single"
+                                            selected={field.value as Date | undefined}
+                                            onSelect={field.onChange}
+                                            initialFocus
+                                            />
+                                        </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="warrantyEndDate"
+                                    render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Fin de Garantía (90 días)</FormLabel>
+                                        <Input value={field.value ? format(new Date(field.value), "PPP", { locale: es }) : 'Se calculará al finalizar'} disabled />
+                                    </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
                     </TabsContent>
                     <TabsContent value="payments" className="mt-0 space-y-4">
                         <div className='grid grid-cols-3 gap-4 text-center'>

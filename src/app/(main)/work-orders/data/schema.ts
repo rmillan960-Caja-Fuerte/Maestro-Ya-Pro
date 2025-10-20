@@ -59,6 +59,7 @@ export const workOrderSchema = z.object({
   createdAt: z.union([z.instanceof(Timestamp), z.string()]),
   updatedAt: z.union([z.instanceof(Timestamp), z.string()]).optional(),
   scheduledDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
+  scheduledTime: z.string().optional(),
   completionDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
   warrantyEndDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional().nullable(),
   relatedOrderId: z.string().optional(),
