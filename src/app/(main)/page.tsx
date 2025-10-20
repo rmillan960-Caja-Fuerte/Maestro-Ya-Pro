@@ -67,25 +67,21 @@ export default function DashboardPage() {
 
   // Queries - Memoized and dependent on user.uid
   const workOrdersQuery = useMemoFirebase(() => {
-      if (!firestore || !user?.uid) return null;
-      return query(
-        collection(firestore, 'work-orders'),
-        where('ownerId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      );
-    },
-    [firestore, user?.uid]
-  );
+    if (!firestore || !user?.uid) return null;
+    return query(
+      collection(firestore, 'work-orders'),
+      where('ownerId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+  }, [firestore, user?.uid]);
   
   const clientsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-      return query(
-        collection(firestore, 'clients'), 
-        where('ownerId', '==', user.uid)
-      );
-    },
-    [firestore, user?.uid]
-  );
+    return query(
+      collection(firestore, 'clients'), 
+      where('ownerId', '==', user.uid)
+    );
+  }, [firestore, user?.uid]);
 
   // Data fetching - useCollection will not run if query is null
   const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!user);
