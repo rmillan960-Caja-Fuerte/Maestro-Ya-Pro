@@ -26,15 +26,31 @@ import {
 } from "@/components/ui/table"
 import { WorkOrderTableToolbar } from "./work-order-table-toolbar"
 import { WorkOrderTablePagination } from "./work-order-table-pagination"
+import { doc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore"
+import { useFirestore } from "@/firebase"
+import { useToast } from "@/hooks/use-toast"
+import { workOrderSchema, type WorkOrder } from "../data/schema"
+import { generateOrderNumber } from "@/lib/utils"
+import { Client } from "@/app/(main)/clients/data/schema"
+import { Master } from "@/app/(main)/masters/data/schema"
+import { WorkOrderFormDialog } from "./work-order-form-dialog"
+import type { z } from "zod"
+
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  clients: Client[]
+  masters: Master[]
+  workOrdersCount: number
 }
 
 export function WorkOrderTable<TData, TValue>({
   columns,
   data,
+  clients,
+  masters,
+  workOrdersCount
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -43,7 +59,50 @@ export function WorkOrderTable<TData, TValue>({
     []
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [selectedWorkOrder, setSelectedWorkOrder] = React.useState<z.infer<typeof workOrderSchema> | null>(null);
   
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const handleSaveWorkOrder = async (workOrderData: Omit<WorkOrder, 'id' | 'orderNumber' | 'createdAt'>) => {
+    try {
+      if (selectedWorkOrder) {
+        // Update existing work order
+        const workOrderRef = doc(firestore, "work-orders", selectedWorkOrder.id);
+        await setDoc(workOrderRef, { ...workOrderData, updatedAt: serverTimestamp() }, { merge: true });
+        toast({
+          title: "Orden actualizada",
+          description: "La orden de trabajo ha sido actualizada.",
+        });
+      } else {
+        // Create new work order
+        const newOrderNumber = generateOrderNumber(workOrdersCount);
+        const newWorkOrder = {
+          ...workOrderData,
+          orderNumber: newOrderNumber,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+        await addDoc(collection(firestore, "work-orders"), newWorkOrder);
+        toast({
+          title: "Orden creada",
+          description: "La nueva orden de trabajo ha sido creada.",
+        });
+      }
+      setIsFormOpen(false);
+      setSelectedWorkOrder(null);
+    } catch (error) {
+      console.error("Error saving work order:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo guardar la orden de trabajo. Inténtalo de nuevo.",
+      });
+    }
+  };
+
+
   const table = useReactTable({
     data,
     columns,
@@ -54,7 +113,10 @@ export function WorkOrderTable<TData, TValue>({
       columnFilters,
     },
     meta: {
-      // Future functions to open forms can go here
+      openForm: (workOrder?: z.infer<typeof workOrderSchema>) => {
+        setSelectedWorkOrder(workOrder || null);
+        setIsFormOpen(true);
+      }
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -123,8 +185,14 @@ export function WorkOrderTable<TData, TValue>({
         </Table>
       </div>
       <WorkOrderTablePagination table={table} />
+       <WorkOrderFormDialog
+        isOpen={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        onSave={handleSaveWorkOrder}
+        workOrder={selectedWorkOrder}
+        clients={clients}
+        masters={masters}
+      />
     </div>
   )
 }
-
-    

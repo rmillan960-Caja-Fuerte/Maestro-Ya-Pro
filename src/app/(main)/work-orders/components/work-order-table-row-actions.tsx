@@ -26,6 +26,8 @@ export function WorkOrderTableRowActions<TData>({
 }: WorkOrderTableRowActionsProps<TData>) {
   const { toast } = useToast();
   const workOrder = workOrderSchema.parse(row.original)
+  const { openForm } = (table.options.meta as { openForm: (workOrder?: z.infer<typeof workOrderSchema>) => void });
+
 
   const handleDelete = async () => {
     toast({
@@ -47,8 +49,7 @@ export function WorkOrderTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem onClick={() => toast({ title: "Próximamente" })}>Ver Detalle</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => toast({ title: "Próximamente" })}>Editar</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openForm(workOrder)}>Editar / Ver Detalle</DropdownMenuItem>
         <DropdownMenuItem onClick={() => toast({ title: "Próximamente" })}>Agendar</DropdownMenuItem>
         <DropdownMenuItem onClick={() => toast({ title: "Próximamente" })}>Registrar Pago</DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -59,5 +60,3 @@ export function WorkOrderTableRowActions<TData>({
     </DropdownMenu>
   )
 }
-
-    

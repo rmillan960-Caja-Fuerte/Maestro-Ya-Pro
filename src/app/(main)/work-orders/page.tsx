@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import {
   Card,
@@ -25,7 +25,7 @@ export default function WorkOrdersPage() {
 
   // 1. Define stable queries for all needed collections
   const workOrdersQuery = useMemoFirebase(() => 
-    !firestore || !user ? null : collection(firestore, 'work-orders'),
+    !firestore || !user ? null : query(collection(firestore, 'work-orders'), orderBy('createdAt', 'desc')),
     [firestore, user?.uid]
   );
   const clientsQuery = useMemoFirebase(() => 
@@ -43,7 +43,8 @@ export default function WorkOrdersPage() {
   const { data: masters, isLoading: isLoadingMasters } = useCollection<Master>(mastersQuery);
 
   // Determine the overall loading state
-  const isLoading = isAuthLoading || isLoadingWorkOrders || isLoadingClients || isLoadingMasters;
+  const isLoading = isAuthLoading || (user && (isLoadingWorkOrders || isLoadingClients || isLoadingMasters));
+
 
   // 3. Enrich the work orders with client and master names
   const enrichedWorkOrders = React.useMemo(() => {
@@ -55,7 +56,7 @@ export default function WorkOrdersPage() {
     return workOrders.map(wo => ({
       ...wo,
       clientName: clientsMap.get(wo.clientId) || 'Cliente Desconocido',
-      masterName: mastersMap.get(wo.masterId) || 'No Asignado',
+      masterName: wo.masterId ? (mastersMap.get(wo.masterId) || 'Maestro no encontrado') : 'No Asignado',
     }));
   }, [workOrders, clients, masters]);
 
@@ -87,7 +88,13 @@ export default function WorkOrdersPage() {
             </div>
           </div>
         ) : (
-          <WorkOrderTable columns={columns} data={enrichedWorkOrders} />
+          <WorkOrderTable
+            columns={columns}
+            data={enrichedWorkOrders}
+            clients={clients || []}
+            masters={masters || []}
+            workOrdersCount={workOrders?.length || 0}
+          />
         )}
       </CardContent>
     </Card>

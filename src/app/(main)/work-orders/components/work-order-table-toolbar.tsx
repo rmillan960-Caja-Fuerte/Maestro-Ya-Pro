@@ -19,6 +19,7 @@ export function WorkOrderTableToolbar<TData>({
   table,
 }: WorkOrderTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
+  const { openForm } = table.options.meta as { openForm: () => void };
 
   return (
     <div className="flex items-center justify-between">
@@ -51,7 +52,7 @@ export function WorkOrderTableToolbar<TData>({
       </div>
       <div className="flex items-center space-x-2">
         <WorkOrderTableViewOptions table={table} />
-        <Button size="sm" className="h-8" onClick={() => {}}>
+        <Button size="sm" className="h-8" onClick={() => openForm()}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Crear Orden
         </Button>
@@ -59,5 +60,3 @@ export function WorkOrderTableToolbar<TData>({
     </div>
   )
 }
-
-    

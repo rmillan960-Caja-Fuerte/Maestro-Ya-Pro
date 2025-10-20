@@ -62,9 +62,9 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
       <WorkOrderTableColumnHeader column={column} title="Fecha Creación" />
     ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("createdAt"));
-      return <div>{formatDate(date, 'short')}</div>;
+      return <div>{formatDate(row.getValue("createdAt"), 'short')}</div>;
     },
+    sortingFn: 'datetime',
   },
   {
     accessorKey: "status",
@@ -81,7 +81,14 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
       }
 
       return (
-        <Badge variant={status.variant as any} className="flex items-center gap-2">
+        <Badge 
+            variant={status.variant as any} 
+            className="flex items-center gap-2 whitespace-nowrap"
+            style={{ 
+                backgroundColor: status.color, 
+                color: status.color ? 'white' : undefined 
+            }}
+        >
           <status.icon className="h-3 w-3" />
           {status.label}
         </Badge>
@@ -106,5 +113,3 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
     cell: ({ row, table }) => <WorkOrderTableRowActions row={row} table={table} />,
   },
 ]
-
-    
