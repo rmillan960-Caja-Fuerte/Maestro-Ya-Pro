@@ -47,8 +47,8 @@ export const PERMISSIONS = {
 };
 
 export const ROLES = {
-  SUPER_ADMIN: {
-    name: 'Super Admin',
+  OWNER: {
+    name: 'Owner',
     permissions: Object.values(PERMISSIONS)
   },
   ADMIN: {

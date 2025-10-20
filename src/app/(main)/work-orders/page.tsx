@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -41,7 +42,7 @@ export default function WorkOrdersPage() {
     
     let q = collection(firestore, 'work-orders') as CollectionReference | query;
     
-    if (userProfile.role === 'SUPER_ADMIN') {
+    if (userProfile.role === 'OWNER') {
       if (selectedCountry !== 'all') {
         q = query(q, where('country', '==', selectedCountry));
       }
@@ -55,7 +56,7 @@ export default function WorkOrdersPage() {
   const clientsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
     let q = collection(firestore, 'clients') as CollectionReference | query;
-    if (userProfile.role !== 'SUPER_ADMIN') {
+    if (userProfile.role !== 'OWNER') {
       q = query(q, where('ownerId', '==', user.uid));
     }
     return q;
@@ -64,7 +65,7 @@ export default function WorkOrdersPage() {
   const mastersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
     let q = collection(firestore, 'masters') as CollectionReference | query;
-     if (userProfile.role !== 'SUPER_ADMIN') {
+     if (userProfile.role !== 'OWNER') {
       q = query(q, where('ownerId', '==', user.uid));
     }
     return q;
@@ -103,7 +104,7 @@ export default function WorkOrdersPage() {
             Administra todas las órdenes de trabajo, desde la cotización hasta el pago.
           </CardDescription>
         </div>
-        {userProfile?.role === 'SUPER_ADMIN' && (
+        {userProfile?.role === 'OWNER' && (
           <CountryFilter
             selectedCountry={selectedCountry}
             onCountryChange={setSelectedCountry}

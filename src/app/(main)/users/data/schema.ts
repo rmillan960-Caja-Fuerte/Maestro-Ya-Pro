@@ -19,7 +19,7 @@ export const userProfileSchema = z.object({
 export type UserProfile = z.infer<typeof userProfileSchema>
 
 export const roleOptions = Object.entries(ROLES)
-    .filter(([key]) => key !== 'SUPER_ADMIN')
+    .filter(([key]) => key !== 'OWNER')
     .map(([key, role]) => ({
         value: key,
         label: role.name,

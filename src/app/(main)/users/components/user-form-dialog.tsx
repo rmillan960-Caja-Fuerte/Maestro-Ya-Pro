@@ -68,7 +68,7 @@ export function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormD
       if (user) {
         form.reset({
             ...user,
-            country: user.country || undefined, // Handle null/undefined for SUPER_ADMIN
+            country: user.country || undefined, // Handle null/undefined for OWNER
         });
       } else {
         form.reset({
@@ -92,7 +92,7 @@ export function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormD
     
     const dataToSave = {
         ...values,
-        country: selectedRole === 'SUPER_ADMIN' ? undefined : values.country,
+        country: selectedRole === 'OWNER' ? undefined : values.country,
     }
     
     await onSave(dataToSave, password);
@@ -170,7 +170,7 @@ export function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormD
                       <SelectTrigger><SelectValue placeholder="Selecciona un rol" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {Object.entries(ROLES).filter(([key]) => key !== 'SUPER_ADMIN').map(([key, role]) => (
+                      {Object.entries(ROLES).filter(([key]) => key !== 'OWNER').map(([key, role]) => (
                         <SelectItem key={key} value={key}>
                           {role.name}
                         </SelectItem>
@@ -182,7 +182,7 @@ export function UserFormDialog({ isOpen, onOpenChange, onSave, user }: UserFormD
               )}
             />
             
-            {selectedRole !== 'SUPER_ADMIN' && (
+            {selectedRole !== 'OWNER' && (
                 <FormField
                     control={form.control}
                     name="country"

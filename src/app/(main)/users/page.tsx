@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -29,18 +30,18 @@ export default function UsersPage() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
   
   // This state will tell us when it's safe to run the main query.
-  const canFetchUsers = !isProfileLoading && userProfile?.role === 'SUPER_ADMIN';
+  const canFetchUsers = !isProfileLoading && userProfile?.role === 'OWNER';
 
   React.useEffect(() => {
     // Wait until profile is loaded to make a decision
-    if (!isAuthLoading && !isProfileLoading && userProfile && userProfile?.role !== 'SUPER_ADMIN') {
+    if (!isAuthLoading && !isProfileLoading && userProfile && userProfile?.role !== 'OWNER') {
       router.replace('/');
     }
   }, [isAuthLoading, isProfileLoading, userProfile, router]);
 
 
   const usersQuery = useMemoFirebase(() => {
-    // Only execute the query if we have confirmed the user is a SUPER_ADMIN
+    // Only execute the query if we have confirmed the user is a OWNER
     if (firestore && canFetchUsers) {
       return query(collection(firestore, 'users'));
     }
@@ -52,7 +53,7 @@ export default function UsersPage() {
 
   const isLoading = isAuthLoading || isProfileLoading || (canFetchUsers && isDataLoading);
 
-  if (!isAuthLoading && !isProfileLoading && userProfile && userProfile?.role !== 'SUPER_ADMIN') {
+  if (!isAuthLoading && !isProfileLoading && userProfile && userProfile?.role !== 'OWNER') {
      return (
         <Card>
             <CardHeader>

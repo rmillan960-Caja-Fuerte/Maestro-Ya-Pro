@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -37,13 +38,14 @@ const navItems = [
 ];
 
 export default function AppSidebar({ isMobile = false, userRole }: { isMobile?: boolean, userRole?: string }) {
+  
   const pathname = usePathname();
   
   const userPermissions = (userRole && ROLES[userRole as keyof typeof ROLES]?.permissions) || [];
 
   const visibleNavItems = navItems.filter(item => {
     if (item.href === '/users') {
-        return userRole === 'SUPER_ADMIN';
+        return userRole === 'OWNER';
     }
     // Simple logic for now: hide if permission is required but user doesn't have it.
     if (item.requiredPermission && !userPermissions.includes(item.requiredPermission)) {

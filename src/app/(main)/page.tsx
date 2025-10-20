@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -79,7 +80,7 @@ export default function DashboardPage() {
     
     let q = collection(firestore, 'work-orders') as CollectionReference | query;
 
-    if (userProfile.role === 'SUPER_ADMIN') {
+    if (userProfile.role === 'OWNER') {
       if (selectedCountry !== 'all') {
         q = query(q, where('country', '==', selectedCountry));
       }
@@ -241,7 +242,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      {userProfile?.role === 'SUPER_ADMIN' && (
+      {userProfile?.role === 'OWNER' && (
         <div className="flex justify-end">
           <CountryFilter
             selectedCountry={selectedCountry}
