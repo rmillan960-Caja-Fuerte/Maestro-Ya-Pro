@@ -1,95 +1,47 @@
-/**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for the 'users', 'masters', and 'work-orders' collections.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profile information, accessible only to the user themselves.
- * - /masters/{masterId}: Stores master/professional information, accessible only to the owner.
- * - /work-orders/{workOrderId}: Stores work order details, accessible only to the owner.
- *
- * Key Security Decisions:
- * - User listing is explicitly denied to protect user privacy.
- * - All write operations are restricted to the document owner.
- * - Data validation during write operations is minimized in this prototyping phase, focusing only on ownership and relational integrity.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Controls access to user profile documents.
-     * @path /databases/{database}/documents/users/{userId}
-     * @allow (create) - Authenticated user with matching UID can create their profile.
-     * @allow (get, update, delete) - Authenticated user can access and modify their own profile.
-     * @deny (list) - Prevents listing all users for privacy.
-     * @deny (create, update, delete) - Unauthorized user.
-     * @principle Enforces document ownership for writes.
-     */
-    match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
+    // Global helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-      function isOwner(userId) {
+    function isOwnerRole() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'OWNER';
+    }
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      function isOwnProfile() {
         return request.auth.uid == userId;
       }
-
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false; // Prevent listing all users.
-      allow create: if isSignedIn() && isOwner(userId);
-      allow update: if isSignedIn() && isOwner(userId);
-      allow delete: if isSignedIn() && isOwner(userId);
+      allow get: if isSignedIn() && (isOwnProfile() || isOwnerRole());
+      allow list: if isOwnerRole();
+      allow create: if isSignedIn() && isOwnProfile();
+      allow update: if isSignedIn() && (isOwnProfile() || isOwnerRole());
+      allow delete: if isOwnerRole();
     }
 
-    /**
-     * @description Controls access to master/professional documents.
-     * @path /databases/{database}/documents/masters/{masterId}
-     * @allow (create) - Authenticated user can create a master document if they are the owner.
-     * @allow (get, update, delete) - Authenticated user can access and modify their own master documents.
-     * @deny (create, update, delete) - Unauthorized user.
-     * @deny (list) - Prevents listing all master for privacy.
-     * @principle Enforces document ownership for writes.
-     */
+    // Rules for the 'masters' collection
     match /masters/{masterId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(masterId) {
-        return request.auth.uid == resource.data.ownerId;
-      }
-
-
       allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && isOwner(masterId);
-      allow delete: if isSignedIn() && isOwner(masterId);
+      allow list: if isOwnerRole();
+      allow write: if isOwnerRole();
     }
 
-    /**
-     * @description Controls access to work order documents.
-     * @path /databases/{database}/documents/work-orders/{workOrderId}
-     * @allow (create) - Authenticated user can create a work order document if they are the owner.
-     * @allow (get, update, delete) - Authenticated user can access and modify their own work order documents.
-     * @deny (create, update, delete) - Unauthorized user.
-     * @deny (list) - Prevents listing all work orders for privacy.
-     * @principle Enforces document ownership for writes.
-     */
+    // Rules for the 'work-orders' collection
     match /work-orders/{workOrderId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(workOrderId) {
-        return request.auth.uid == resource.data.ownerId;
-      }
-
       allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && isOwner(workOrderId);
-      allow delete: if isSignedIn() && isOwner(workOrderId);
+      allow list: if isOwnerRole();
+      allow write: if isOwnerRole();
+    }
+
+    // ADDED: Rules for the 'clients' collection
+    match /clients/{clientId} {
+      allow get: if isSignedIn();
+      allow list: if isOwnerRole();
+      allow write: if isOwnerRole();
     }
   }
 }

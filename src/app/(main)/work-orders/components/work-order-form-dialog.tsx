@@ -174,51 +174,33 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
 
   React.useEffect(() => {
     if (isOpen) {
-        const defaultValues: FormValues = workOrder 
-        ? {
-            ...workOrder,
-            ownerId: workOrder.ownerId || user?.uid || '',
-            clientId: workOrder.clientId || '',
-            title: workOrder.title || '',
-            status: workOrder.status || 'draft',
-            items: workOrder.items || [],
-            subtotal: workOrder.subtotal || 0,
-            tax: workOrder.tax || 0,
-            surcharges: workOrder.surcharges || 0,
-            materialsCost: workOrder.materialsCost || 0,
-            applyTax: workOrder.applyTax || false,
-            total: workOrder.total || 0,
-            balance: workOrder.balance || 0,
-            scheduledDate: workOrder.scheduledDate ? (workOrder.scheduledDate instanceof Timestamp ? workOrder.scheduledDate.toDate() : new Date(workOrder.scheduledDate)) : undefined,
-            scheduledTime: workOrder.scheduledTime || '09:00',
-            completionDate: workOrder.completionDate ? (workOrder.completionDate instanceof Timestamp ? workOrder.completionDate.toDate() : new Date(workOrder.completionDate)) : undefined,
-            warrantyEndDate: workOrder.warrantyEndDate ? (workOrder.warrantyEndDate instanceof Timestamp ? workOrder.warrantyEndDate.toDate() : new Date(workOrder.warrantyEndDate)) : undefined,
-            payments: workOrder.payments?.map(p => ({...p, date: p.date instanceof Timestamp ? p.date.toDate() : new Date(p.date) })) || [],
-            rating: workOrder.rating || 0,
-            review: workOrder.review || '',
-            category: workOrder.category || '',
-            evidence: workOrder.evidence || [],
-          }
-        : {
-            ownerId: user?.uid || '',
-            clientId: '',
-            title: '',
-            status: 'draft',
-            items: [],
-            subtotal: 0,
-            tax: 0,
-            surcharges: 0,
-            materialsCost: 0,
-            applyTax: false,
-            total: 0,
-            balance: 0,
-            payments: [],
-            materialsProvidedBy: 'master',
-            rating: 0,
-            review: '',
-            category: '',
-            scheduledTime: '09:00',
-            evidence: [],
+        const defaultValues: FormValues = {
+            ownerId: workOrder?.ownerId || user?.uid || '',
+            clientId: workOrder?.clientId || '',
+            title: workOrder?.title || '',
+            status: workOrder?.status || 'draft',
+            items: workOrder?.items || [],
+            subtotal: workOrder?.subtotal || 0,
+            tax: workOrder?.tax || 0,
+            surcharges: workOrder?.surcharges || 0,
+            materialsCost: workOrder?.materialsCost || 0,
+            applyTax: workOrder?.applyTax || false,
+            total: workOrder?.total || 0,
+            balance: workOrder?.balance || 0,
+            scheduledDate: workOrder?.scheduledDate ? (workOrder.scheduledDate instanceof Timestamp ? workOrder.scheduledDate.toDate() : new Date(workOrder.scheduledDate)) : undefined,
+            scheduledTime: workOrder?.scheduledTime || '09:00',
+            completionDate: workOrder?.completionDate ? (workOrder.completionDate instanceof Timestamp ? workOrder.completionDate.toDate() : new Date(workOrder.completionDate)) : undefined,
+            warrantyEndDate: workOrder?.warrantyEndDate ? (workOrder.warrantyEndDate instanceof Timestamp ? workOrder.warrantyEndDate.toDate() : new Date(workOrder.warrantyEndDate)) : undefined,
+            payments: workOrder?.payments?.map(p => ({...p, date: p.date instanceof Timestamp ? p.date.toDate() : new Date(p.date) })) || [],
+            rating: workOrder?.rating || 0,
+            review: workOrder?.review || '',
+            category: workOrder?.category || '',
+            evidence: workOrder?.evidence || [],
+            description: workOrder?.description || '',
+            masterId: workOrder?.masterId || '',
+            materialsProvidedBy: workOrder?.materialsProvidedBy || 'master',
+            internalNotes: workOrder?.internalNotes || '',
+            relatedOrderId: workOrder?.relatedOrderId || '',
         };
         form.reset(defaultValues);
     }
@@ -804,3 +786,5 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     </Dialog>
   );
 }
+
+    
