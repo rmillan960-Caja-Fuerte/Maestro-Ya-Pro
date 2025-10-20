@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
-import { collection, query, orderBy, where, doc } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, CollectionReference } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import {
   Card,
@@ -17,6 +17,7 @@ import { columns } from './components/work-order-columns';
 import type { WorkOrder } from './data/schema';
 import type { Client } from '@/app/(main)/clients/data/schema';
 import type { Master } from '@/app/(main)/masters/data/schema';
+import { CountryFilter } from '@/components/country-filter';
 
 // This component now fetches work orders, clients, and masters,
 // then combines them to display enriched data in the table.
@@ -25,40 +26,48 @@ export default function WorkOrdersPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const searchParams = useSearchParams();
   const clientIdFromUrl = searchParams.get('clientId');
+  const [selectedCountry, setSelectedCountry] = React.useState<string | 'all'>('all');
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string}>(userDocRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string, country?: string}>(userDocRef);
 
   // 1. Define stable queries for all needed collections, ensuring user UID and profile exist.
   const workOrdersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
-    const baseQuery = collection(firestore, 'work-orders');
+    
+    let q = collection(firestore, 'work-orders') as CollectionReference | query;
+    
     if (userProfile.role === 'SUPER_ADMIN') {
-      return query(baseQuery, orderBy('createdAt', 'desc'));
+      if (selectedCountry !== 'all') {
+        q = query(q, where('country', '==', selectedCountry));
+      }
+    } else {
+      q = query(q, where('country', '==', userProfile.country));
     }
-    return query(baseQuery, where('ownerId', '==', user.uid), orderBy('createdAt', 'desc'));
-  }, [firestore, user?.uid, userProfile]);
+    
+    return query(q, orderBy('createdAt', 'desc'));
+  }, [firestore, user?.uid, userProfile, selectedCountry]);
   
   const clientsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
-    const baseQuery = collection(firestore, 'clients');
-    if (userProfile.role === 'SUPER_ADMIN') {
-      return query(baseQuery);
+    let q = collection(firestore, 'clients') as CollectionReference | query;
+    if (userProfile.role !== 'SUPER_ADMIN') {
+      q = query(q, where('country', '==', userProfile.country));
     }
-    return query(baseQuery, where('ownerId', '==', user.uid));
+    return q;
   }, [firestore, user?.uid, userProfile]);
   
   const mastersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
-    const baseQuery = collection(firestore, 'masters');
-    if (userProfile.role === 'SUPER_ADMIN') {
-      return query(baseQuery);
+    let q = collection(firestore, 'masters') as CollectionReference | query;
+     if (userProfile.role !== 'SUPER_ADMIN') {
+      q = query(q, where('country', '==', userProfile.country));
     }
-    return query(baseQuery, where('ownerId', '==', user.uid));
+    return q;
   }, [firestore, user?.uid, userProfile]);
 
   // 2. Fetch data from all collections in parallel. useCollection will handle null queries.
@@ -87,11 +96,19 @@ export default function WorkOrdersPage() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Órdenes de Trabajo</CardTitle>
-        <CardDescription>
-          Administra todas las órdenes de trabajo, desde la cotización hasta el pago.
-        </CardDescription>
+      <CardHeader className="sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <CardTitle>Órdenes de Trabajo</CardTitle>
+          <CardDescription>
+            Administra todas las órdenes de trabajo, desde la cotización hasta el pago.
+          </CardDescription>
+        </div>
+        {userProfile?.role === 'SUPER_ADMIN' && (
+          <CountryFilter
+            selectedCountry={selectedCountry}
+            onCountryChange={setSelectedCountry}
+          />
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (

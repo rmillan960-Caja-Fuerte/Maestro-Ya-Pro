@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
-import { collection, query, where, doc } from 'firebase/firestore';
+import * as React from 'react';
+import { collection, query, where, doc, CollectionReference } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-
 import { columns } from './components/client-columns';
 import { ClientTable } from './components/client-table';
 import { type Client } from './data/schema';
@@ -15,31 +14,35 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CountryFilter } from '@/components/country-filter';
 
 export default function ClientsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
+  const [selectedCountry, setSelectedCountry] = React.useState<string | 'all'>('all');
   
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string}>(userDocRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string, country?: string}>(userDocRef);
 
   const clientsQuery = useMemoFirebase(() => {
-    // Wait until we have the user and their profile
     if (!firestore || !user?.uid || !userProfile) return null;
-
-    const clientsCollection = collection(firestore, 'clients');
     
-    // If user is SUPER_ADMIN, fetch all clients. Otherwise, fetch only their own.
+    let q = collection(firestore, 'clients') as CollectionReference | query;
+
     if (userProfile.role === 'SUPER_ADMIN') {
-      return query(clientsCollection);
+        if (selectedCountry !== 'all') {
+            q = query(q, where('country', '==', selectedCountry));
+        }
     } else {
-      return query(clientsCollection, where('ownerId', '==', user.uid));
+        q = query(q, where('country', '==', userProfile.country));
     }
-  }, [firestore, user?.uid, userProfile]); 
+    
+    return q;
+  }, [firestore, user?.uid, userProfile, selectedCountry]); 
 
   const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery, !!userProfile);
 
@@ -47,11 +50,19 @@ export default function ClientsPage() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Clientes</CardTitle>
-        <CardDescription>
-          Administra tus clientes y visualiza su información de contacto.
-        </CardDescription>
+      <CardHeader className="sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <CardTitle>Clientes</CardTitle>
+          <CardDescription>
+            Administra tus clientes y visualiza su información de contacto.
+          </CardDescription>
+        </div>
+        {userProfile?.role === 'SUPER_ADMIN' && (
+          <CountryFilter
+            selectedCountry={selectedCountry}
+            onCountryChange={setSelectedCountry}
+          />
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (

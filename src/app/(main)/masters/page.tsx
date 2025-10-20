@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import { collection, query, where, doc } from 'firebase/firestore';
+import * as React from 'react';
+import { collection, query, where, doc, CollectionReference } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 
 import { columns } from './components/master-columns';
@@ -15,29 +15,35 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CountryFilter } from '@/components/country-filter';
 
 export default function MastersPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
+  const [selectedCountry, setSelectedCountry] = React.useState<string | 'all'>('all');
   
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string}>(userDocRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string, country?: string}>(userDocRef);
 
   const mastersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
     
-    const mastersCollection = collection(firestore, 'masters');
+    let q = collection(firestore, 'masters') as CollectionReference | query;
 
     if (userProfile.role === 'SUPER_ADMIN') {
-      return query(mastersCollection);
+      if (selectedCountry !== 'all') {
+        q = query(q, where('country', '==', selectedCountry));
+      }
     } else {
-      return query(mastersCollection, where('ownerId', '==', user.uid));
+      q = query(q, where('country', '==', userProfile.country));
     }
-  }, [firestore, user?.uid, userProfile]);
+    
+    return q;
+  }, [firestore, user?.uid, userProfile, selectedCountry]);
 
   const { data: masters, isLoading: isDataLoading } = useCollection<Master>(mastersQuery, !!userProfile);
 
@@ -45,11 +51,19 @@ export default function MastersPage() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Maestros</CardTitle>
-        <CardDescription>
-          Administra los perfiles y la información de tus profesionales.
-        </CardDescription>
+      <CardHeader className="sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <CardTitle>Maestros</CardTitle>
+          <CardDescription>
+            Administra los perfiles y la información de tus profesionales.
+          </CardDescription>
+        </div>
+         {userProfile?.role === 'SUPER_ADMIN' && (
+          <CountryFilter
+            selectedCountry={selectedCountry}
+            onCountryChange={setSelectedCountry}
+          />
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (

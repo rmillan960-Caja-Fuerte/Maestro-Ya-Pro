@@ -7,7 +7,10 @@
  * through an admin interface without requiring code changes.
  */
 
-// Structure: { countryCode: { cityCode: zones[] } }
+export const allCountries = [
+    { name: 'Ecuador', code: 'EC' },
+    { name: 'Venezuela', code: 'VE' },
+];
 
 export const quitoZones = [
     { value: 'norte', label: 'Norte de Quito' },

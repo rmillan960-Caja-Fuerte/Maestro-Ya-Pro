@@ -36,13 +36,14 @@ import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from 'rechar
 import { Button } from '@/components/ui/button';
 import type { ChartConfig } from '@/components/ui/chart';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, orderBy, where, Timestamp, doc } from 'firebase/firestore';
+import { collection, query, orderBy, where, Timestamp, doc, CollectionReference } from 'firebase/firestore';
 import { type WorkOrder } from './work-orders/data/schema';
 import { type Client } from './clients/data/schema';
 import { specialties } from './masters/data/schema';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { startOfMonth, subMonths, getMonth } from 'date-fns';
+import { CountryFilter } from '@/components/country-filter';
 
 
 const revenueChartConfig = {
@@ -64,39 +65,47 @@ const ordersChartConfig: ChartConfig = specialties.reduce((acc, specialty, index
 export default function DashboardPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
+  const [selectedCountry, setSelectedCountry] = React.useState<string | 'all'>('all');
   
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
   
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string}>(userDocRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string, country?: string}>(userDocRef);
 
   // Queries - Memoized and dependent on user.uid and userProfile
   const workOrdersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
-    const baseQuery = collection(firestore, 'work-orders');
+    
+    let q = collection(firestore, 'work-orders') as CollectionReference | query;
+
     if (userProfile.role === 'SUPER_ADMIN') {
-      return query(baseQuery, orderBy('createdAt', 'desc'));
+      if (selectedCountry !== 'all') {
+        q = query(q, where('country', '==', selectedCountry));
+      }
+    } else {
+      q = query(q, where('ownerId', '==', user.uid), where('country', '==', userProfile.country));
     }
-    return query(
-      baseQuery,
-      where('ownerId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-  }, [firestore, user?.uid, userProfile]);
+    
+    return query(q, orderBy('createdAt', 'desc'));
+  }, [firestore, user?.uid, userProfile, selectedCountry]);
   
   const clientsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !userProfile) return null;
-    const baseQuery = collection(firestore, 'clients');
+    
+    let q = collection(firestore, 'clients') as CollectionReference | query;
+
     if (userProfile.role === 'SUPER_ADMIN') {
-      return query(baseQuery);
+        if (selectedCountry !== 'all') {
+            q = query(q, where('country', '==', selectedCountry));
+        }
+    } else {
+        q = query(q, where('country', '==', userProfile.country));
     }
-    return query(
-      baseQuery, 
-      where('ownerId', '==', user.uid)
-    );
-  }, [firestore, user?.uid, userProfile]);
+    
+    return query(q);
+  }, [firestore, user?.uid, userProfile, selectedCountry]);
 
   // Data fetching - useCollection will not run if query is null
   const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!userProfile);
@@ -253,6 +262,14 @@ export default function DashboardPage() {
 
   return (
     <>
+      {userProfile?.role === 'SUPER_ADMIN' && (
+        <div className="flex justify-end">
+          <CountryFilter
+            selectedCountry={selectedCountry}
+            onCountryChange={setSelectedCountry}
+          />
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         {kpiData.map((kpi) => (
           <Card key={kpi.key}>
