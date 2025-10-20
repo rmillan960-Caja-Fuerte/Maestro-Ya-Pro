@@ -3,10 +3,7 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getAnalytics } from 'firebase/analytics';
-import { getPerformance } from 'firebase/performance';
-
+import { getFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -36,18 +33,11 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-    const isBrowser = typeof window !== 'undefined';
-    const firestore = getFirestore(firebaseApp);
-    const auth = getAuth(firebaseApp);
-    
-    return {
-      firebaseApp,
-      auth,
-      firestore,
-      analytics: isBrowser ? getAnalytics(firebaseApp) : null,
-      performance: isBrowser ? getPerformance(firebaseApp) : null,
-      crashlytics: null,
-    };
+  return {
+    firebaseApp,
+    auth: getAuth(firebaseApp),
+    firestore: getFirestore(firebaseApp)
+  };
 }
 
 export * from './provider';

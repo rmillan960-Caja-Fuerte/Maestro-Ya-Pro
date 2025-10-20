@@ -4,18 +4,13 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { Analytics } from 'firebase/analytics';
-import { FirebasePerformance } from 'firebase/performance';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
 interface FirebaseProviderProps {
   children: ReactNode;
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
-  analytics: Analytics | null;
-  performance: FirebasePerformance | null;
-  crashlytics: null;
 }
 
 // Internal state for user authentication
@@ -31,9 +26,6 @@ export interface FirebaseContextState {
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   auth: Auth | null; // The Auth service instance
-  analytics: Analytics | null;
-  performance: FirebasePerformance | null;
-  crashlytics: null;
   // User authentication state
   user: User | null;
   isUserLoading: boolean; // True during initial auth check
@@ -45,9 +37,6 @@ export interface FirebaseServicesAndUser {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
-  analytics: Analytics | null;
-  performance: FirebasePerformance | null;
-  crashlytics: null;
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -71,9 +60,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   firebaseApp,
   firestore,
   auth,
-  analytics,
-  performance,
-  crashlytics,
 }) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
@@ -111,14 +97,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       firebaseApp: servicesAvailable ? firebaseApp : null,
       firestore: servicesAvailable ? firestore : null,
       auth: servicesAvailable ? auth : null,
-      analytics,
-      performance,
-      crashlytics,
       user: userAuthState.user,
       isUserLoading: userAuthState.isUserLoading,
       userError: userAuthState.userError,
     };
-  }, [firebaseApp, firestore, auth, userAuthState, analytics, performance, crashlytics]);
+  }, [firebaseApp, firestore, auth, userAuthState]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -147,9 +130,6 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     firebaseApp: context.firebaseApp,
     firestore: context.firestore,
     auth: context.auth,
-    analytics: context.analytics,
-    performance: context.performance,
-    crashlytics: context.crashlytics,
     user: context.user,
     isUserLoading: context.isUserLoading,
     userError: context.userError,
@@ -173,25 +153,6 @@ export const useFirebaseApp = (): FirebaseApp => {
   const { firebaseApp } = useFirebase();
   return firebaseApp;
 };
-
-/** Hook to access Analytics instance. */
-export const useAnalytics = (): Analytics | null => {
-    const { analytics } = useFirebase();
-    return analytics;
-};
-
-/** Hook to access Performance instance. */
-export const usePerformance = (): FirebasePerformance | null => {
-    const { performance } = useFirebase();
-    return performance;
-};
-
-/** Hook to access Crashlytics instance. */
-export const useCrashlytics = (): null => {
-    const { crashlytics } = useFirebase();
-    return crashlytics;
-};
-
 
 type MemoFirebase <T> = T & {__memo?: boolean};
 

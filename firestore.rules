@@ -1,123 +1,467 @@
-/**
- * @fileoverview Firestore Security Rules for Maestro-Ya Pro.
- *
- * Core Philosophy:
- * This ruleset prioritizes secure data access based on user roles and ownership.
- * It aims to prevent unauthorized data modification and exposure while allowing
- * for flexible data structures during the prototyping phase.  Schema validation is intentionally relaxed.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles. Accessible only to the user and potentially admins (not implemented in this version).
- * - /clients/{clientId}: Stores client information. Accessible only to the owner (creator) of the client and potentially admins.
- * - /masters/{masterId}: Stores master (professional) information. Accessible only to the owner (creator) of the master and potentially admins.
- * - /work-orders/{workOrderId}: Stores work orders. Publicly readable, but only the owner can modify.
- *
- * Key Security Decisions:
- * - User listing is disallowed.
- * - Owner-only access is enforced for critical write operations (create, update, delete) where applicable.
- * - No schema validation is done beyond authorization checks.
- *
- * Denormalization for Authorization:
- * - Clients and Masters have a denormalized `ownerId` field to simplify owner-based access rules.
- *
- * Structural Segregation:
- * - No segregation between public and private data is implemented at this time.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
+     * @description This ruleset enforces a strict user-ownership model for data access. Users can only read and write their own data, and owners can manage their associated entities (clients and masters).
+     * @dataStructure
+     *  - All user-specific data is nested under /users/{userId}. This includes profile, preferences, and metadata.
+     *  - Client and master data are stored in top-level collections (/clients/{clientId} and /masters/{masterId}), with an `ownerId` field indicating the user who owns the data.
+     * @keySecurityDecisions
+     *  - User listing is disallowed.
+     *  - Read-only collections are not explicitly supported in this version. Public read access would require a separate collection without user-specific data.
+     * @denormalizationForAuthorization To simplify and improve the performance of the rules, the `ownerId` field is denormalized into the /clients/{clientId} and /masters/{masterId} documents. This enables direct ownership checks without additional `get()` calls.
+     * @structuralSegregation User-specific data (profile, preferences, metadata) is segregated under the /users/{userId} path, ensuring only the user can access it. Publicly readable data (if any) should be stored in separate top-level collections to avoid mixing access requirements.
      */
-    function isSignedIn() {
-      return request.auth != null;
-    }
 
     /**
-     * @description Checks if the authenticated user is the owner of the resource.
-     * @param {string} userId - The ID of the user to check against.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the existing owner of the resource.
-     * @param {string} userId - The ID of the user to check against.
-     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rules for user documents.
+     * @description Allows a user to read and write their own user document.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user_abc' can create their own profile: `request.auth.uid == 'user_abc'`
-     * @deny (create) User with UID 'user_xyz' cannot create a profile for 'user_abc': `request.auth.uid != 'user_abc'`
-     * @allow (get) User with UID 'user_abc' can read their profile: `request.auth.uid == 'user_abc'`
-     * @deny (get) User with UID 'user_xyz' cannot read 'user_abc''s profile: `request.auth.uid != 'user_abc'`
-     * @principle Enforces document ownership for writes and reads.
+     * @allow (create) - User with UID 'user_abc' can create their own document at /users/user_abc if request.auth.uid == 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete their own document at /users/user_abc if request.auth.uid == 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a document at /users/user_abc.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the document at /users/user_abc.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow get: if isOwner(userId);
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if false;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if false;
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Rules for client documents.
+     * @description Allows a user to read and write their own profile information.
+     * @path /users/{userId}/profile/{profileId}
+     * @allow (create) - User with UID 'user_abc' can create their profile at /users/user_abc/profile/profile_123 if request.auth.uid == 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete their profile at /users/user_abc/profile/profile_123 if request.auth.uid == 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a profile at /users/user_abc/profile/profile_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the profile at /users/user_abc/profile/profile_123.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/profile/{profileId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to read and write their own preferences.
+     * @path /users/{userId}/preferences/{preferencesId}
+     * @allow (create) - User with UID 'user_abc' can create their preferences at /users/user_abc/preferences/pref_123 if request.auth.uid == 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete their preferences at /users/user_abc/preferences/pref_123 if request.auth.uid == 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create preferences at /users/user_abc/preferences/pref_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the preferences at /users/user_abc/preferences/pref_123.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/preferences/{preferencesId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to read and write their own notification preferences.
+     * @path /users/{userId}/preferences/{preferencesId}/notifications/{notificationsId}
+     * @allow (create) - User with UID 'user_abc' can create their notification preferences at /users/user_abc/preferences/pref_123/notifications/notif_123 if request.auth.uid == 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete their notification preferences at /users/user_abc/preferences/pref_123/notifications/notif_123 if request.auth.uid == 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create notification preferences at /users/user_abc/preferences/pref_123/notifications/notif_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the notification preferences at /users/user_abc/preferences/pref_123/notifications/notif_123.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/preferences/{preferencesId}/notifications/{notificationsId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to read and write their own dashboard preferences.
+     * @path /users/{userId}/preferences/{preferencesId}/dashboard/{dashboardId}
+     * @allow (create) - User with UID 'user_abc' can create their dashboard preferences at /users/user_abc/preferences/pref_123/dashboard/dash_123 if request.auth.uid == 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete their dashboard preferences at /users/user_abc/preferences/pref_123/dashboard/dash_123 if request.auth.uid == 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create dashboard preferences at /users/user_abc/preferences/pref_123/dashboard/dash_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the dashboard preferences at /users/user_abc/preferences/pref_123/dashboard/dash_123.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/preferences/{preferencesId}/dashboard/{dashboardId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
+    }
+
+    /**
+     * @description Allows a user to read and write their own metadata.
+     * @path /users/{userId}/metadata/{metadataId}
+     * @allow (create) - User with UID 'user_abc' can create their metadata at /users/user_abc/metadata/meta_123 if request.auth.uid == 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete their metadata at /users/user_abc/metadata/meta_123 if request.auth.uid == 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create metadata at /users/user_abc/metadata/meta_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the metadata at /users/user_abc/metadata/meta_123.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId}/metadata/{metadataId} {
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
+    }
+
+    /**
+     * @description Allows the owner of a client to read, write, and delete it.
      * @path /clients/{clientId}
-     * @allow (create) User with UID 'user_abc' can create a client and set themself as the owner: `request.auth.uid == 'user_abc' && request.resource.data.ownerId == 'user_abc'`
-     * @deny (create) User with UID 'user_xyz' cannot create a client owned by 'user_abc': `request.auth.uid == 'user_xyz' && request.resource.data.ownerId == 'user_abc'`
-     * @allow (get) User with UID 'user_abc' can read a client they own: `resource.data.ownerId == 'user_abc'`
-     * @deny (get) User with UID 'user_xyz' cannot read a client owned by 'user_abc': `resource.data.ownerId == 'user_abc' && request.auth.uid != 'user_abc'`
+     * @allow (create) - User with UID 'user_abc' can create a client at /clients/client_123 if request.resource.data.ownerId == 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client at /clients/client_123 if resource.data.ownerId == 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client at /clients/client_123 with ownerId 'user_abc'.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client at /clients/client_123 owned by 'user_abc'.
      * @principle Enforces document ownership for writes.
      */
     match /clients/{clientId} {
+      function isOwner(ownerId) {
+        return request.auth.uid == ownerId;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      allow list: if false;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn();
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
+      allow update: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
     }
 
     /**
-     * @description Rules for master documents.
+     * @description Allows the owner of a client to read and write the basic info.
+     * @path /clients/{clientId}/basic_info/{basicInfoId}
+     * @allow (create) - User with UID 'user_abc' can create a client basic info at /clients/client_123/basic_info/basic_123 if the parent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client basic info at /clients/client_123/basic_info/basic_123 if the parent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client basic info at /clients/client_123/basic_info/basic_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client basic info at /clients/client_123/basic_info/basic_123.
+     * @principle Restricts access to a client's data tree based on ownership.
+     */
+    match /clients/{clientId}/basic_info/{basicInfoId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+    /**
+     * @description Allows the owner of a client to read and write the contact info.
+     * @path /clients/{clientId}/contact/{contactId}
+     * @allow (create) - User with UID 'user_abc' can create a client contact at /clients/client_123/contact/contact_123 if the parent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client contact at /clients/client_123/contact/contact_123 if the parent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client contact at /clients/client_123/contact/contact_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client contact at /clients/client_123/contact/contact_123.
+     * @principle Restricts access to a client's data tree based on ownership.
+     */
+    match /clients/{clientId}/contact/{contactId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+    /**
+     * @description Allows the owner of a client to read and write the addresses.
+     * @path /clients/{clientId}/addresses/{addressId}
+     * @allow (create) - User with UID 'user_abc' can create a client address at /clients/client_123/addresses/address_123 if the parent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client address at /clients/client_123/addresses/address_123 if the parent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client address at /clients/client_123/addresses/address_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client address at /clients/client_123/addresses/address_123.
+     * @principle Restricts access to a client's data tree based on ownership.
+     */
+    match /clients/{clientId}/addresses/{addressId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+        /**
+     * @description Allows the owner of a client address to read and write the coordinates.
+     * @path /clients/{clientId}/addresses/{addressId}/coordinates/{coordinatesId}
+     * @allow (create) - User with UID 'user_abc' can create client address coordinates at /clients/client_123/addresses/address_123/coordinates/coord_123 if the grandparent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client address coordinates at /clients/client_123/addresses/address_123/coordinates/coord_123 if the grandparent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create client address coordinates at /clients/client_123/addresses/address_123/coordinates/coord_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client address coordinates at /clients/client_123/addresses/address_123/coordinates/coord_123.
+     * @principle Restricts access to a client address's data tree based on ownership.
+     */
+    match /clients/{clientId}/addresses/{addressId}/coordinates/{coordinatesId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+    /**
+     * @description Allows the owner of a client to read and write the financial info.
+     * @path /clients/{clientId}/financial/{financialId}
+     * @allow (create) - User with UID 'user_abc' can create a client financial info at /clients/client_123/financial/financial_123 if the parent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client financial info at /clients/client_123/financial/financial_123 if the parent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client financial info at /clients/client_123/financial/financial_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client financial info at /clients/client_123/financial/financial_123.
+     * @principle Restricts access to a client's data tree based on ownership.
+     */
+    match /clients/{clientId}/financial/{financialId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+    /**
+     * @description Allows the owner of a client to read and write the documents.
+     * @path /clients/{clientId}/documents/{documentId}
+     * @allow (create) - User with UID 'user_abc' can create a client document at /clients/client_123/documents/document_123 if the parent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client document at /clients/client_123/documents/document_123 if the parent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client document at /clients/client_123/documents/document_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client document at /clients/client_123/documents/document_123.
+     * @principle Restricts access to a client's data tree based on ownership.
+     */
+    match /clients/{clientId}/documents/{documentId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+    /**
+     * @description Allows the owner of a client to read and write the segmentation info.
+     * @path /clients/{clientId}/segmentation/{segmentationId}
+     * @allow (create) - User with UID 'user_abc' can create a client segmentation info at /clients/client_123/segmentation/segmentation_123 if the parent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client segmentation info at /clients/client_123/segmentation/segmentation_123 if the parent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client segmentation info at /clients/client_123/segmentation/segmentation_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client segmentation info at /clients/client_123/segmentation/segmentation_123.
+     * @principle Restricts access to a client's data tree based on ownership.
+     */
+    match /clients/{clientId}/segmentation/{segmentationId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+    /**
+     * @description Allows the owner of a client to read and write the preferences.
+     * @path /clients/{clientId}/preferences/{preferencesId}
+     * @allow (create) - User with UID 'user_abc' can create a client preferences at /clients/client_123/preferences/preferences_123 if the parent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client preferences at /clients/client_123/preferences/preferences_123 if the parent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client preferences at /clients/client_123/preferences/preferences_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client preferences at /clients/client_123/preferences/preferences_123.
+     * @principle Restricts access to a client's data tree based on ownership.
+     */
+    match /clients/{clientId}/preferences/{preferencesId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+    /**
+     * @description Allows the owner of a client preferences to read and write the schedule.
+     * @path /clients/{clientId}/preferences/{preferencesId}/schedule/{scheduleId}
+     * @allow (create) - User with UID 'user_abc' can create a client schedule at /clients/client_123/preferences/preferences_123/schedule/schedule_123 if the grandparent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client schedule at /clients/client_123/preferences/preferences_123/schedule/schedule_123 if the grandparent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client schedule at /clients/client_123/preferences/preferences_123/schedule/schedule_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client schedule at /clients/client_123/preferences/preferences_123/schedule/schedule_123.
+     * @principle Restricts access to a client preferences's data tree based on ownership.
+     */
+    match /clients/{clientId}/preferences/{preferencesId}/schedule/{scheduleId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+    /**
+     * @description Allows the owner of a client to read and write the metadata.
+     * @path /clients/{clientId}/metadata/{metadataId}
+     * @allow (create) - User with UID 'user_abc' can create a client metadata at /clients/client_123/metadata/metadata_123 if the parent client's ownerId is 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the client metadata at /clients/client_123/metadata/metadata_123 if the parent client's ownerId is 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a client metadata at /clients/client_123/metadata/metadata_123.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the client metadata at /clients/client_123/metadata/metadata_123.
+     * @principle Restricts access to a client's data tree based on ownership.
+     */
+    match /clients/{clientId}/metadata/{metadataId} {
+      function isOwner(clientId) {
+        return get(/databases/$(database)/documents/clients/$(clientId)).data.ownerId == request.auth.uid;
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(clientId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(clientId);
+      allow update: if isSignedIn() && isOwner(clientId);
+      allow delete: if isSignedIn() && isOwner(clientId);
+    }
+
+     /**
+     * @description Allows the owner of a master to read, write, and delete it.
      * @path /masters/{masterId}
-     * @allow (create) User with UID 'user_abc' can create a master and set themself as the owner: `request.auth.uid == 'user_abc' && request.resource.data.ownerId == 'user_abc'`
-     * @deny (create) User with UID 'user_xyz' cannot create a master owned by 'user_abc': `request.auth.uid == 'user_xyz' && request.resource.data.ownerId == 'user_abc'`
-     * @allow (get) User with UID 'user_abc' can read a master they own: `resource.data.ownerId == 'user_abc'`
-     * @deny (get) User with UID 'user_xyz' cannot read a master owned by 'user_abc': `resource.data.ownerId == 'user_abc' && request.auth.uid != 'user_abc'`
+     * @allow (create) - User with UID 'user_abc' can create a master at /masters/master_123 if request.resource.data.ownerId == 'user_abc'.
+     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete the master at /masters/master_123 if resource.data.ownerId == 'user_abc'.
+     * @deny (create) - User with UID 'user_xyz' cannot create a master at /masters/master_123 with ownerId 'user_abc'.
+     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the master at /masters/master_123 owned by 'user_abc'.
      * @principle Enforces document ownership for writes.
      */
     match /masters/{masterId} {
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn();
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
-    }
+      function isOwner(ownerId) {
+        return request.auth.uid == ownerId;
+      }
 
-    /**
-     * @description Rules for work order documents.
-     * @path /work-orders/{workOrderId}
-     * @allow (get) Anyone can read work orders.
-     * @allow (list) Anyone can list work orders.
-     * @deny (create) No one can create work orders - ownerId needs to exist
-     * @principle Public read, owner-only writes.
-     */
-    match /work-orders/{workOrderId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow update: if false;  // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow delete: if false;  // TODO: Add owner validation once the schema is updated with an ownership field.
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get: if isSignedIn() && get(/databases/$(database)/documents/masters/$(masterId)).data.ownerId == request.auth.uid;
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/masters/$(masterId)).data.ownerId == request.auth.uid;
     }
   }
 }
