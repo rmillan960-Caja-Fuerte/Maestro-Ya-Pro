@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -49,6 +50,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 
 const formSchema = workOrderSchema.omit({ 
     id: true, 
@@ -721,6 +723,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                 <Button type='button' variant='outline' disabled>
                                     <FileDigit className="mr-2 h-4 w-4" /> Generar Recibo Anticipo (30%)
                                 </Button>
+
                                 <Button type='button' variant='outline' disabled>
                                     <FileDigit className="mr-2 h-4 w-4" /> Generar Recibo Final
                                 </Button>
@@ -791,3 +794,5 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     </Dialog>
   );
 }
+
+    
