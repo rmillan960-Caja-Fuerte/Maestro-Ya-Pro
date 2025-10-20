@@ -11,7 +11,7 @@
         "lastName": { "type": "string", "description": "User's last name." },
         "role": { "type": "string", "description": "User's role (e.g., SUPER_ADMIN, OPERATOR)." },
         "permissions": { "type": "array", "items": { "type": "string" }, "description": "Specific action permissions." },
-        "country": { "type": "string", "description": "Country code the user operates in (e.g., EC, VE).", "optional": true },
+        "country": { "type": "string", "description": "Country code the user operates in (e.g., EC, VE)." },
         "isActive": { "type": "boolean", "description": "Whether the user account is active." },
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of user creation." }
       },
@@ -44,7 +44,7 @@
          "country": { "type": "string", "description": "Country code for the order." },
          "orderNumber": { "type": "string", "description": "Unique identifier for the work order." },
          "clientId": { "type": "string", "description": "ID of the associated client." },
-         "masterId": { "type": "string", "description": "ID of the assigned master.", "optional": true },
+         "masterId": { "type": "string", "description": "ID of the assigned master." },
          "status": { "type": "string", "description": "Current status of the work order." },
          "title": { "type": "string", "description": "Title of the work order." },
          "total": { "type": "number", "description": "Total amount for the work order." },

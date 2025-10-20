@@ -46,7 +46,7 @@ export default function WorkOrdersPage() {
         q = query(q, where('country', '==', selectedCountry));
       }
     } else {
-      q = query(q, where('country', '==', userProfile.country));
+        q = query(q, where('ownerId', '==', user.uid));
     }
     
     return query(q, orderBy('createdAt', 'desc'));
@@ -56,7 +56,7 @@ export default function WorkOrdersPage() {
     if (!firestore || !user?.uid || !userProfile) return null;
     let q = collection(firestore, 'clients') as CollectionReference | query;
     if (userProfile.role !== 'SUPER_ADMIN') {
-      q = query(q, where('country', '==', userProfile.country));
+      q = query(q, where('ownerId', '==', user.uid));
     }
     return q;
   }, [firestore, user?.uid, userProfile]);
@@ -65,7 +65,7 @@ export default function WorkOrdersPage() {
     if (!firestore || !user?.uid || !userProfile) return null;
     let q = collection(firestore, 'masters') as CollectionReference | query;
      if (userProfile.role !== 'SUPER_ADMIN') {
-      q = query(q, where('country', '==', userProfile.country));
+      q = query(q, where('ownerId', '==', user.uid));
     }
     return q;
   }, [firestore, user?.uid, userProfile]);

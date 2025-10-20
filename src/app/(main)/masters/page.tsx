@@ -39,7 +39,7 @@ export default function MastersPage() {
         q = query(q, where('country', '==', selectedCountry));
       }
     } else {
-      q = query(q, where('country', '==', userProfile.country));
+        q = query(q, where('ownerId', '==', user.uid));
     }
     
     return q;
