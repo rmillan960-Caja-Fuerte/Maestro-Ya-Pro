@@ -141,14 +141,37 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     name: "payments",
   });
 
-  const items = form.watch('items');
-  const surcharges = form.watch('surcharges');
-  const materialsProvidedBy = form.watch('materialsProvidedBy');
-  const materialsCost = form.watch('materialsCost');
-  const applyTax = form.watch('applyTax');
-  const payments = form.watch('payments');
+  const calculateTotals = React.useCallback(() => {
+    const { items, surcharges, materialsProvidedBy, materialsCost, applyTax, payments } = form.getValues();
+
+    const subtotal = items?.reduce((acc, item) => acc + (item.quantity * item.unitPrice || 0), 0) || 0;
+    
+    let materialsTotal = 0;
+    if (materialsProvidedBy === 'master' && materialsCost && materialsCost > 0) {
+        materialsTotal = materialsCost * (1 + MATERIAL_MARKUP_RATE);
+    }
+
+    const baseForTax = subtotal + (surcharges || 0) + materialsTotal;
+    const taxAmount = applyTax ? baseForTax * TAX_RATE : 0;
+    const total = baseForTax + taxAmount;
+    
+    const totalPaid = payments?.reduce((acc, p) => acc + p.amount, 0) || 0;
+    const balance = total - totalPaid;
+
+    form.setValue('subtotal', subtotal, { shouldValidate: true });
+    form.setValue('tax', taxAmount, { shouldValidate: true });
+    form.setValue('total', total, { shouldValidate: true });
+    form.setValue('balance', balance, { shouldValidate: true });
+  }, [form]);
+
+  const watchedFields = form.watch(['items', 'surcharges', 'materialsProvidedBy', 'materialsCost', 'applyTax', 'payments']);
+
+  React.useEffect(() => {
+    calculateTotals();
+  }, [watchedFields, calculateTotals]);
+
   const completionDate = form.watch('completionDate');
-  
+
   React.useEffect(() => {
     if (isOpen) {
         const defaultValues: FormValues = workOrder 
@@ -200,28 +223,6 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
   }, [isOpen, workOrder, form, user]);
 
   React.useEffect(() => {
-    const subtotal = items?.reduce((acc, item) => acc + (item.quantity * item.unitPrice || 0), 0) || 0;
-    
-    let materialsTotal = 0;
-    if (materialsProvidedBy === 'master' && materialsCost && materialsCost > 0) {
-        materialsTotal = materialsCost * (1 + MATERIAL_MARKUP_RATE);
-    }
-
-    const baseForTax = subtotal + (surcharges || 0) + materialsTotal;
-    const taxAmount = applyTax ? baseForTax * TAX_RATE : 0;
-    const total = baseForTax + taxAmount;
-    
-    const totalPaid = payments?.reduce((acc, p) => acc + p.amount, 0) || 0;
-    const balance = total - totalPaid;
-
-    form.setValue('subtotal', subtotal);
-    form.setValue('tax', taxAmount);
-    form.setValue('total', total);
-    form.setValue('balance', balance);
-
-  }, [items, surcharges, materialsProvidedBy, materialsCost, applyTax, payments, form]);
-
-  React.useEffect(() => {
     if (completionDate) {
       const newWarrantyEndDate = addDays(new Date(completionDate), 90);
       form.setValue('warrantyEndDate', newWarrantyEndDate);
@@ -237,13 +238,14 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     setIsSaving(false);
   };
   
-  const handleItemChange = (index: number, field: 'quantity' | 'unitPrice', value: number) => {
+  const handleItemBlur = (index: number) => {
     const currentItem = form.getValues(`items.${index}`);
     if (currentItem) {
-        const quantity = field === 'quantity' ? value : currentItem.quantity;
-        const unitPrice = field === 'unitPrice' ? value : currentItem.unitPrice;
-        update(index, { ...currentItem, [field]: value, total: quantity * unitPrice });
+        const quantity = currentItem.quantity || 0;
+        const unitPrice = currentItem.unitPrice || 0;
+        update(index, { ...currentItem, total: quantity * unitPrice });
     }
+    calculateTotals();
   };
 
   const handleAddPayment = () => {
@@ -389,15 +391,15 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.quantity`}
-                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="Cant." {...field} onChange={e => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
+                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="Cant." {...field} onBlur={() => handleItemBlur(index)} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
                                         />
                                         <FormField
                                             control={form.control}
                                             name={`items.${index}.unitPrice`}
-                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="P. Unitario" {...field} onChange={e => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
+                                            render={({ field }) => <FormItem><FormControl><Input type="number" placeholder="P. Unitario" {...field} onBlur={() => handleItemBlur(index)} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>}
                                         />
                                         <div className="flex items-center h-10 justify-end">
-                                            <p>{formatCurrency(items?.[index]?.total || 0)}</p>
+                                            <p>{formatCurrency(form.getValues(`items.${index}.total`) || 0)}</p>
                                         </div>
                                         <Button type="button" variant="ghost" size="icon" className="text-destructive h-10 w-10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>
@@ -438,10 +440,10 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                 <span className="text-muted-foreground">Recargos:</span>
                                 <span>{formatCurrency(form.getValues('surcharges') || 0)}</span>
                             </div>
-                            {materialsProvidedBy === 'master' && (
+                            {form.getValues('materialsProvidedBy') === 'master' && (
                               <div className="flex justify-between">
                                   <span className="text-muted-foreground">Materiales (+15%):</span>
-                                  <span>{formatCurrency((materialsCost || 0) * (1 + MATERIAL_MARKUP_RATE))}</span>
+                                  <span>{formatCurrency((form.getValues('materialsCost') || 0) * (1 + MATERIAL_MARKUP_RATE))}</span>
                               </div>
                             )}
                             <div className="flex justify-between items-center">
@@ -584,7 +586,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                                         </FormItem>
                                     )}
                                 />
-                                {materialsProvidedBy === 'master' && (
+                                {form.getValues('materialsProvidedBy') === 'master' && (
                                     <FormField
                                         control={form.control}
                                         name="materialsCost"
@@ -668,7 +670,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                            </div>
                            <div className='rounded-lg border bg-card text-card-foreground shadow-sm p-4'>
                                 <h4 className='text-sm font-medium text-muted-foreground'>Total Pagado</h4>
-                                <p className='text-2xl font-bold text-green-600'>{formatCurrency(payments?.reduce((acc, p) => acc + p.amount, 0) || 0)}</p>
+                                <p className='text-2xl font-bold text-green-600'>{formatCurrency(form.getValues('payments')?.reduce((acc, p) => acc + p.amount, 0) || 0)}</p>
                            </div>
                            <div className='rounded-lg border bg-card text-card-foreground shadow-sm p-4'>
                                 <h4 className='text-sm font-medium text-muted-foreground'>Saldo Pendiente</h4>
@@ -794,5 +796,7 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     </Dialog>
   );
 }
+
+    
 
     
