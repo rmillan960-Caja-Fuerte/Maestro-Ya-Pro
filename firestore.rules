@@ -1,36 +1,37 @@
 /**
- * @fileoverview Firestore Security Rules
+ * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset provides open access to all data for prototyping purposes,
- * while still requiring users to be signed in (either anonymously or with a password).
- * This allows for rapid development without authentication barriers,
- * while ensuring basic user tracking is in place.
+ * This ruleset is in prototyping mode. It prioritizes developer speed and rapid iteration
+ * by focusing on authorization and minimal data validation. Data shape validation is relaxed.
  *
  * Data Structure:
- * The database has no defined structure or entities, implying a flat structure with
- * no specific ownership or relational constraints.
+ * The Firestore database has a flat structure with a top-level `work-orders` collection.
  *
  * Key Security Decisions:
- * - Open read access to all data.
- * - Signed-in user required for all write operations.
- * - No ownership or role-based restrictions are enforced during this phase.
+ * - Listing of `work-orders` is denied.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow read/write access to all documents if the user is authenticated.
-    match /{document=**} {
-      allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+    /**
+     * @description Secures the `work-orders` collection.
+     * @path /databases/{database}/documents/work-orders
+     * @allow (get) Anyone can retrieve a work order.
+     * @deny (list) Listing all work orders is prohibited.
+     * @allow (create) No one can create a work order.
+     * @allow (update) No one can update a work order.
+     * @allow (delete) No one can delete a work order.
+     * @principle No access granted.
+     */
+    match /work-orders/{workOrderId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
-    // Helper function to determine if a user is signed in.
-    function isSignedIn() {
-      return request.auth != null;
-    }
   }
 }
