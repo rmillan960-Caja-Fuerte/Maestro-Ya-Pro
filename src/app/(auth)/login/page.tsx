@@ -6,7 +6,12 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  fetchSignInMethodsForEmail,
+} from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -92,10 +97,25 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       console.error('Error signing in:', error);
+
+      let description = 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.';
+
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        try {
+          const signInMethods = await fetchSignInMethodsForEmail(auth, values.email);
+          if (signInMethods.includes('google.com')) {
+            description = 'Esta cuenta está registrada con Google. Por favor, usa el botón "Iniciar Sesión con Google".';
+          }
+        } catch (fetchError) {
+          // Si fetchSignInMethodsForEmail falla, usamos el mensaje genérico.
+          console.error('Could not fetch sign in methods:', fetchError);
+        }
+      }
+
       toast({
         variant: 'destructive',
         title: 'Error al iniciar sesión',
-        description: 'Las credenciales son incorrectas. Por favor, inténtalo de nuevo.',
+        description: description,
       });
     } finally {
       setIsLoading(false);
@@ -114,10 +134,14 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       console.error('Error with Google sign in:', error);
+       let description = 'No se pudo iniciar sesión con Google. Por favor, inténtalo de nuevo.';
+      if (error.code === 'auth/popup-closed-by-user') {
+        description = 'La ventana de inicio de sesión fue cerrada. Inténtalo de nuevo.';
+      }
       toast({
         variant: 'destructive',
         title: 'Error de inicio de sesión con Google',
-        description: 'No se pudo iniciar sesión con Google. Por favor, inténtalo de nuevo.',
+        description: description,
       });
     } finally {
       setIsGoogleLoading(false);
