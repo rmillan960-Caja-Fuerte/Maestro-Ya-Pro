@@ -3,11 +3,14 @@
 
 import { Table } from "@tanstack/react-table"
 import { X, PlusCircle } from "lucide-react"
+import { DateRange } from "react-day-picker"
+import { useState, useEffect } from "react"
+import { Timestamp } from "firebase/firestore"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { WorkOrderTableViewOptions } from "./work-order-table-view-options"
-
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { statuses } from "../data/schema"
 import { WorkOrderTableFacetedFilter } from "./work-order-table-faceted-filter"
 
@@ -20,6 +23,21 @@ export function WorkOrderTableToolbar<TData>({
 }: WorkOrderTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
   const { openForm } = table.options.meta as { openForm: () => void };
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+  useEffect(() => {
+    const createdAtColumn = table.getColumn("createdAt");
+    if (createdAtColumn) {
+      if (dateRange?.from && dateRange?.to) {
+        // Set the end of the day for the 'to' date
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        createdAtColumn.setFilterValue([dateRange.from, toDate]);
+      } else {
+        createdAtColumn.setFilterValue(undefined);
+      }
+    }
+  }, [dateRange, table]);
 
   return (
     <div className="flex items-center justify-between">
@@ -32,6 +50,7 @@ export function WorkOrderTableToolbar<TData>({
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
+        <DateRangePicker date={dateRange} onDateChange={setDateRange} className="h-8"/>
         {table.getColumn("status") && (
           <WorkOrderTableFacetedFilter
             column={table.getColumn("status")}
@@ -42,10 +61,13 @@ export function WorkOrderTableToolbar<TData>({
         {isFiltered && (
           <Button
             variant="ghost"
-            onClick={() => table.resetColumnFilters()}
+            onClick={() => {
+                table.resetColumnFilters()
+                setDateRange(undefined)
+            }}
             className="h-8 px-2 lg:px-3"
           >
-            Reset
+            Limpiar
             <X className="ml-2 h-4 w-4" />
           </Button>
         )}

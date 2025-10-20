@@ -107,6 +107,7 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
       return <div>{formatDate(dateValue as Date | Timestamp, 'short')}</div>;
     },
     sortingFn: 'datetime',
+    filterFn: 'dateBetween'
   },
   {
     accessorKey: "status",

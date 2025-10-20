@@ -15,6 +15,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  FilterFn,
 } from "@tanstack/react-table"
 import {
   Table,
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/table"
 import { WorkOrderTableToolbar } from "./work-order-table-toolbar"
 import { WorkOrderTablePagination } from "./work-order-table-pagination"
-import { doc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore"
+import { doc, setDoc, addDoc, collection, serverTimestamp, Timestamp } from "firebase/firestore"
 import { useFirestore, useUser } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { workOrderSchema, type WorkOrder } from "../data/schema"
@@ -45,6 +46,21 @@ interface DataTableProps<TData, TValue> {
   workOrdersCount: number
   initialClientId?: string | null;
 }
+
+const dateBetweenFilterFn: FilterFn<any> = (row, columnId, value, addMeta) => {
+  const date = row.getValue(columnId) as Date | Timestamp;
+  const [start, end] = value as [Date, Date];
+
+  const d = date instanceof Timestamp ? date.toDate() : date;
+
+  if (!d) return false;
+  
+  const startTime = start.getTime();
+  const endTime = end.getTime();
+  const rowTime = d.getTime();
+
+  return rowTime >= startTime && rowTime <= endTime;
+};
 
 export function WorkOrderTable<TData, TValue>({
   columns,
@@ -126,6 +142,9 @@ export function WorkOrderTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns,
+    filterFns: {
+        dateBetween: dateBetweenFilterFn,
+    },
     state: {
       sorting,
       columnVisibility,
