@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -48,7 +47,7 @@ export default function UsersPage() {
     return null;
   }, [firestore, canFetchUsers]);
 
-  // The hook will not run if usersQuery is null.
+  // The hook will not run if usersQuery is null. `useCollection` has a second argument to enable/disable it.
   const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, canFetchUsers);
 
   const isLoading = isAuthLoading || isProfileLoading || (canFetchUsers && isDataLoading);
