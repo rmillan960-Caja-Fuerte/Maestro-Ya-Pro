@@ -41,14 +41,15 @@ const navItems = [
 export default function AppSidebar({ isMobile = false, userRole }: { isMobile?: boolean, userRole?: string }) {
   const pathname = usePathname();
   
-  // This is a simple permission check. In a real app, you'd get this from the user's session.
   const userPermissions = (userRole && ROLES[userRole as keyof typeof ROLES]?.permissions) || [];
 
   const visibleNavItems = navItems.filter(item => {
     if (item.href === '/users') {
         return userRole === 'SUPER_ADMIN';
     }
-    return true; // Other items are visible to all for now
+    // For now, other items are visible if they don't have a specific permission or the user has it.
+    // This can be tightened later.
+    return !item.requiredPermission || userPermissions.includes(item.requiredPermission);
   });
 
   const navContent = (

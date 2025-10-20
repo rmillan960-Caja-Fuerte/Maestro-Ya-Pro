@@ -2,8 +2,8 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, doc } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import {
   Card,
   CardContent,
@@ -16,82 +16,43 @@ import { columns } from './components/user-columns';
 import { UserTable } from './components/user-table';
 import type { UserProfile } from './data/schema';
 import { useRouter } from 'next/navigation';
-import { getAuth, onIdTokenChanged } from 'firebase/auth';
 
 export default function UsersPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
   const router = useRouter();
-  const [isSuperAdmin, setIsSuperAdmin] = React.useState<boolean | null>(null);
+  
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
+  
+  const isSuperAdmin = userProfile?.role === 'SUPER_ADMIN';
 
   React.useEffect(() => {
-    if (isAuthLoading) return;
-    if (!user) {
+    // Wait until profile is loaded to make a decision
+    if (!isAuthLoading && !isProfileLoading && !isSuperAdmin) {
       router.replace('/');
-      return;
     }
+  }, [isAuthLoading, isProfileLoading, isSuperAdmin, router]);
 
-    const auth = getAuth();
-    const unsubscribe = onIdTokenChanged(auth, async (userWithClaims) => {
-      if (userWithClaims) {
-        try {
-          const idTokenResult = await userWithClaims.getIdTokenResult(true); // Force refresh
-          const isAdmin = idTokenResult.claims.role === 'SUPER_ADMIN';
-          setIsSuperAdmin(isAdmin);
-          if (!isAdmin) {
-            router.replace('/');
-          }
-        } catch (error) {
-          console.error("Error getting ID token result:", error);
-          setIsSuperAdmin(false);
-          router.replace('/');
-        }
-      } else {
-        setIsSuperAdmin(false);
-        router.replace('/');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [user, isAuthLoading, router]);
 
   const usersQuery = useMemoFirebase(() => {
     // Only execute the query if we have confirmed the user is a SUPER_ADMIN
-    if (firestore && isSuperAdmin === true) {
+    if (firestore && isSuperAdmin) {
       return query(collection(firestore, 'users'));
     }
     return null;
   }, [firestore, isSuperAdmin]);
 
   // The hook will not run if usersQuery is null.
-  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, isSuperAdmin === true);
+  const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, isSuperAdmin);
 
-  const isLoading = isAuthLoading || isSuperAdmin === null || (isSuperAdmin === true && isDataLoading);
+  const isLoading = isAuthLoading || isProfileLoading || (isSuperAdmin && isDataLoading);
 
-  if (isSuperAdmin === null) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Gestión de Usuarios</CardTitle>
-                <CardDescription>Verificando permisos...</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <Skeleton className="h-8 w-[250px]" />
-                    </div>
-                    <div className="rounded-md border">
-                        <div className="space-y-2 p-4">
-                            <Skeleton className="h-6 w-full" />
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
-  }
-
-  if (!isSuperAdmin) {
+  if (!isSuperAdmin && !isLoading) {
      return (
         <Card>
             <CardHeader>
