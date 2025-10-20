@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { workOrderSchema, statuses } from '../data/schema';
-import { Loader2, PlusCircle, Trash2, CalendarIcon, ImageIcon, Banknote, FileDigit } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, CalendarIcon, ImageIcon, Banknote, FileDigit, Star } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -70,6 +70,26 @@ interface WorkOrderFormDialogProps {
 const TAX_RATE = 0.15;
 const MATERIAL_MARKUP_RATE = 0.15;
 
+const StarRating = ({ value, onValueChange }: { value: number, onValueChange: (value: number) => void }) => {
+    const [hoverValue, setHoverValue] = React.useState<number | undefined>(undefined);
+    return (
+        <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                    key={star}
+                    className={cn(
+                        "h-6 w-6 cursor-pointer transition-colors",
+                        (hoverValue || value) >= star ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+                    )}
+                    onClick={() => onValueChange(star)}
+                    onMouseEnter={() => setHoverValue(star)}
+                    onMouseLeave={() => setHoverValue(undefined)}
+                />
+            ))}
+        </div>
+    );
+};
+
 export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, clients, masters }: WorkOrderFormDialogProps) {
   const [isSaving, setIsSaving] = React.useState(false);
   const { toast } = useToast();
@@ -90,6 +110,8 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
       balance: 0,
       payments: [],
       materialsProvidedBy: 'master',
+      rating: 0,
+      review: '',
     }
   });
 
@@ -120,6 +142,8 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             completionDate: workOrder.completionDate ? (workOrder.completionDate instanceof Timestamp ? workOrder.completionDate.toDate() : new Date(workOrder.completionDate)) : undefined,
             warrantyEndDate: workOrder.warrantyEndDate ? (workOrder.warrantyEndDate instanceof Timestamp ? workOrder.warrantyEndDate.toDate() : new Date(workOrder.warrantyEndDate)) : undefined,
             payments: workOrder.payments?.map(p => ({...p, date: p.date instanceof Timestamp ? p.date.toDate() : new Date(p.date) })) || [],
+            rating: workOrder.rating || 0,
+            review: workOrder.review || '',
           }
         : {
             clientId: '',
@@ -135,6 +159,8 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
             balance: 0,
             payments: [],
             materialsProvidedBy: 'master',
+            rating: 0,
+            review: '',
         };
         form.reset(defaultValues);
     }
@@ -214,12 +240,13 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 flex flex-col overflow-hidden">
             <Tabs defaultValue="general" className="flex-1 flex flex-col overflow-hidden">
-                <TabsList className="w-full grid grid-cols-5">
+                <TabsList className="w-full grid grid-cols-6">
                     <TabsTrigger value="general">General</TabsTrigger>
                     <TabsTrigger value="quote">Cotización</TabsTrigger>
                     <TabsTrigger value="logistics">Logística</TabsTrigger>
                     <TabsTrigger value="payments">Pagos</TabsTrigger>
                     <TabsTrigger value="evidence">Evidencia</TabsTrigger>
+                    <TabsTrigger value="review">Valoración</TabsTrigger>
                 </TabsList>
                 
                 <div className="flex-1 overflow-y-auto p-4 space-y-6">
@@ -612,6 +639,42 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
                             </p>
                         </div>
                     </TabsContent>
+                    <TabsContent value="review" className="mt-0 space-y-4">
+                         <div className="p-4 border rounded-lg">
+                            <h3 className="text-lg font-medium mb-4">Valoración del Cliente</h3>
+                            <div className='space-y-4'>
+                                <FormField
+                                    control={form.control}
+                                    name="rating"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Calificación (de 1 a 5 estrellas)</FormLabel>
+                                            <FormControl>
+                                                <StarRating value={field.value || 0} onValueChange={field.onChange} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="review"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Comentarios del Cliente</FormLabel>
+                                            <FormControl>
+                                                <Textarea placeholder="Ej: El maestro fue muy profesional y el trabajo quedó excelente." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-4">
+                                Registra aquí la valoración proporcionada por el cliente una vez finalizado el trabajo.
+                            </p>
+                         </div>
+                    </TabsContent>
                 </div>
             </Tabs>
             <DialogFooter className="pt-4 border-t">
@@ -629,3 +692,5 @@ export function WorkOrderFormDialog({ isOpen, onOpenChange, onSave, workOrder, c
     </Dialog>
   );
 }
+
+    

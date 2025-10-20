@@ -8,6 +8,7 @@ import { quitoZones } from "../data/zones"
 import { MasterTableColumnHeader } from "./master-table-column-header"
 import { MasterTableRowActions } from "./master-table-row-actions"
 import { Badge } from "@/components/ui/badge"
+import { Star } from "lucide-react"
 
 export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
   {
@@ -74,22 +75,20 @@ export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
     }
   },
   {
-    accessorKey: "coverageZones",
+    accessorKey: "rating",
     header: ({ column }) => (
-        <MasterTableColumnHeader column={column} title="Zonas de Cobertura" />
+      <MasterTableColumnHeader column={column} title="Rating" />
     ),
     cell: ({ row }) => {
-        const zones = row.getValue("coverageZones") as string[];
-        if (!zones) return null;
-        return (
-            <div className="flex flex-wrap gap-1 max-w-xs">
-                {zones.map(zoneValue => {
-                    const zoneLabel = quitoZones.find(z => z.value === zoneValue)?.label || zoneValue;
-                    return <Badge key={zoneValue} variant="outline">{zoneLabel}</Badge>
-                })}
-            </div>
-        )
-    }
+      const rating = row.getValue("rating") as number | undefined;
+      if (!rating) return <div className="text-muted-foreground">-</div>;
+      return (
+        <div className="flex items-center gap-1">
+          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+          {rating.toFixed(1)}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "status",
@@ -116,3 +115,5 @@ export const columns: ColumnDef<z.infer<typeof masterSchema>>[] = [
     cell: ({ row, table }) => <MasterTableRowActions row={row} table={table} />,
   },
 ]
+
+    

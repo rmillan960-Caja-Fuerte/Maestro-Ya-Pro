@@ -204,6 +204,8 @@
         "completionDate": { "type": "string", "format": "date-time", "description": "The date when the work was officially completed." },
         "warrantyEndDate": { "type": "string", "format": "date-time", "description": "The date when the warranty for this work expires." },
         "relatedOrderId": { "type": "string", "description": "If this is a follow-up or warranty work, this links to the original work order ID." },
+        "rating": { "type": "number", "description": "Client's rating for the completed work (1-5)." },
+        "review": { "type": "string", "description": "Client's review of the completed work." },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
         "createdBy": { "type": "string", "description": "User ID of the creator." }
@@ -273,3 +275,5 @@
     }
   }
 }
+
+    

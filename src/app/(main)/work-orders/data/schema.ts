@@ -53,6 +53,8 @@ export const workOrderSchema = z.object({
   materialsProvidedBy: z.enum(['master', 'client']).default('master'),
   internalNotes: z.string().optional(),
   evidence: z.array(z.object({ url: z.string(), stage: z.enum(['before', 'during', 'after'])})).optional(),
+  rating: z.number().min(1).max(5).optional(),
+  review: z.string().optional(),
   createdAt: z.union([z.instanceof(Timestamp), z.string()]),
   updatedAt: z.union([z.instanceof(Timestamp), z.string()]).optional(),
   scheduledDate: z.union([z.instanceof(Timestamp), z.instanceof(Date), z.string()]).optional(),
@@ -138,3 +140,5 @@ export const statuses = [
     color: "bg-indigo-500",
   },
 ]
+
+    
