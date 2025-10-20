@@ -22,10 +22,10 @@ export default function ClientsPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   
   const clientsQuery = useMemoFirebase(() => {
-    // Wait until the user is authenticated before creating the query.
+    // Wait until the user is authenticated and firestore is available before creating the query.
     if (!firestore || !user) return null;
     return collection(firestore, 'clients');
-  }, [firestore, user]);
+  }, [firestore, user?.uid]); // Depend on user.uid for stability
 
   const { data: clients, isLoading: isDataLoading } = useCollection<Client>(clientsQuery);
 

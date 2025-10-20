@@ -3,7 +3,6 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -32,22 +31,21 @@ import {
   LogOut,
 } from 'lucide-react';
 import AppSidebar from './sidebar';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { usePathname } from 'next/navigation';
-import { Logo } from '../logo';
-import { cn } from '@/lib/utils';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/firebase';
+import { Avatar, AvatarFallback } from '../ui/avatar';
 
 export default function AppHeader() {
-  const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
   const pathname = usePathname();
   const auth = useAuth();
+  const router = useRouter();
 
 
-  const handleLogout = (e: React.MouseEvent) => {
+  const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (auth) {
-      auth.signOut();
+      await auth.signOut();
+      router.push('/login');
     }
   }
 
@@ -113,16 +111,11 @@ export default function AppHeader() {
             size="icon"
             className="overflow-hidden rounded-full"
           >
-            {userAvatar && (
-              <Image
-                src={userAvatar.imageUrl}
-                fill
-                alt="Avatar"
-                className="object-cover"
-                sizes="36px"
-                data-ai-hint={userAvatar.imageHint}
-              />
-            )}
+            <Avatar>
+              <AvatarFallback>
+                <User />
+              </AvatarFallback>
+            </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -148,10 +141,10 @@ export default function AppHeader() {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
-            <Link href="/login" className="flex items-center w-full">
+            <div className="flex items-center w-full cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
               Cerrar Sesión
-            </Link>
+            </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

@@ -51,10 +51,10 @@ export default function AppSidebar({ isMobile = false }: { isMobile?: boolean })
             <Link href={item.href}>
               <button
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:text-sidebar-primary',
                   'w-full justify-start',
                   {
-                    'bg-muted text-primary': pathname === item.href,
+                    'bg-sidebar-accent text-sidebar-primary-foreground': pathname === item.href,
                   }
                 )}
               >
@@ -78,10 +78,10 @@ export default function AppSidebar({ isMobile = false }: { isMobile?: boolean })
             <Link href="/settings">
               <button
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:text-sidebar-primary',
                   'w-full justify-start',
                   {
-                    'bg-muted text-primary': pathname.startsWith('/settings'),
+                    'bg-sidebar-accent text-sidebar-primary-foreground': pathname.startsWith('/settings'),
                   }
                 )}
               >
@@ -98,11 +98,11 @@ export default function AppSidebar({ isMobile = false }: { isMobile?: boolean })
   );
 
   return (
-    <aside className={cn("h-screen bg-background", { 'hidden sm:flex flex-col border-r': !isMobile })}>
-      <div className="border-b p-2">
+    <aside className={cn("h-screen bg-sidebar text-sidebar-foreground", { 'hidden sm:flex flex-col border-r border-sidebar-border': !isMobile })}>
+      <div className="border-b border-sidebar-border p-2">
         <Link href="/" className="flex items-center justify-center gap-2 font-semibold text-lg font-headline">
-          <Button variant="outline" size="icon" aria-label="Home">
-            <Logo className="h-5 w-5 fill-current" />
+          <Button variant="outline" size="icon" aria-label="Home" className="bg-sidebar-accent border-sidebar-border hover:bg-sidebar-primary">
+            <Logo className="h-5 w-5 text-sidebar-primary-foreground" />
           </Button>
           <span className={cn({'sr-only': !isMobile})}>Maestro-Ya Pro</span>
         </Link>
@@ -113,7 +113,7 @@ export default function AppSidebar({ isMobile = false }: { isMobile?: boolean })
           {isMobile && settingsNav}
         </div>
         {!isMobile && (
-          <div className="border-t p-2">
+          <div className="border-t border-sidebar-border p-2">
             {settingsNav}
           </div>
         )}
