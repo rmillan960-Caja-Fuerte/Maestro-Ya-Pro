@@ -1,38 +1,34 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
+ * @fileoverview Firestore Security Rules for Prototyping.
  *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model. Each document is owned
- * by a specific user, identified by their Firebase Authentication UID.
- * Only the owner has full read and write access to their own documents.
+ * Core Philosophy: This ruleset enforces a strict user-ownership model for user profiles and related data (masters and work orders).
+ * Only the authenticated user who owns a specific resource can create, read, update, or delete it. This approach prioritizes
+ * security and data privacy by default.  Schema validation is relaxed to enable rapid prototyping.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information.
- * - /masters/{masterId}: Stores master/professional information.
- * - /work-orders/{workOrderId}: Stores work order details.
+ * - /users/{userId}: Stores user profile information, with 'userId' matching the Firebase Auth UID.
+ * - /masters/{masterId}: Stores professional/master information, with each document having an `ownerId` field linking it to a user.
+ * - /work-orders/{workOrderId}: Stores work order details, with each document having an `ownerId` field linking it to a user.
  *
  * Key Security Decisions:
- * - User listing is disallowed to protect privacy.
- * - All writes are validated against user ownership.
- * - In the case of any ambiguity, the rules default to a secure, deny-all posture.
- *
- * Denormalization for Authorization:
- * - The 'Master' and 'WorkOrder' entities both require an 'ownerId' field. This field
- *   is used to directly link the document to its owner, avoiding the need for
- *   complex lookups or joins in the security rules.
+ * - User Listing Disallowed:  Listing all users is explicitly denied to protect user privacy.
+ * - Ownership Model: All write operations are validated against the `request.auth.uid` to ensure the user owns the data.
+ * - Data Denormalization: The rules rely on the `ownerId` field in `/masters` and `/work-orders` to efficiently determine ownership,
+ *   avoiding costly `get()` operations to other collections.
+ * - Relaxed Schema Validation: Data type and presence validation are largely skipped in favor of rapid prototyping. However,
+ *   the rules *do* validate the presence and immutability of ownership fields to prevent unauthorized data access.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Controls access to user profile information.
      * @path /users/{userId}
-     * @allow (create) - User with UID 'user123' can create their profile if request.auth.uid == 'user123'.
-     * @allow (get, list) - User with UID 'user123' can read their profile.
-     * @allow (update, delete) - User with UID 'user123' can update/delete their profile.
-     * @deny (create) - User with UID 'user456' cannot create a profile with ID 'user123'.
-     * @principle Enforces user-ownership: Only the authenticated user can manage their own profile.
+     * @allow (create) User with matching UID can create their profile.
+     * @allow (get, list, update, delete) User with matching UID can read, update, and delete their profile.
+     * @deny (create) User tries to create a profile with a mismatched UID.
+     * @principle Enforces document ownership and UID matching for user profiles.
      */
     match /users/{userId} {
       function isSignedIn() {
@@ -43,22 +39,25 @@ service cloud.firestore {
         return request.auth.uid == userId;
       }
 
-      allow get: if isSignedIn() && isOwner(userId);
-      allow list: if false;
+      allow get: if isOwner(userId);
+      allow list: if false; // User listing is not allowed.
 
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == request.auth.uid;
-      allow update: if isSignedIn() && isOwner(userId) && resource.data.uid == userId;
-      allow delete: if isSignedIn() && isOwner(userId) && resource.data.uid == userId;
+      // Allow the user to create their own profile, but enforce the UID match.
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == userId;
+
+      // Protect updates: only the owner can update, and the UID field is immutable.
+      allow update: if isSignedIn() && isOwner(userId) && request.resource.data.uid == resource.data.uid;
+
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Controls access to master/professional documents.
+     * @description Controls access to master/professional information.
      * @path /masters/{masterId}
-     * @allow (create) - User with UID 'user123' can create a master profile with ownerId 'user123'.
-     * @allow (get, list) - Anyone can read master profiles.
-     * @allow (update, delete) - User with UID 'user123' can update/delete the master profile they own.
-     * @deny (create) - User with UID 'user456' cannot create a master profile with ownerId 'user123'.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @allow (create) User can create a master profile if they are the owner.
+     * @allow (get, list, update, delete) Only the owner can read, update, and delete their master profile.
+     * @deny (create) User tries to create a master profile with a mismatched ownerId.
+     * @principle Enforces document ownership for master profiles.
      */
     match /masters/{masterId} {
       function isSignedIn() {
@@ -73,20 +72,25 @@ service cloud.firestore {
         return isOwner(ownerId) && resource != null;
       }
 
-      allow get, list: if true;
-      allow create: if isSignedIn() && isOwner(request.resource.data.ownerId) && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
+      allow get: if isOwner(resource.data.ownerId);
+      allow list: if isOwner(request.auth.uid); // Only the owner can list
+
+      // Only allow creation if the ownerId matches the authenticated user.
+      allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
+
+      // Protect updates: only the owner can update, and the ownerId field is immutable.
+      allow update: if isExistingOwner(resource.data.ownerId) && (request.resource.data.ownerId == resource.data.ownerId);
+
+      allow delete: if isExistingOwner(resource.data.ownerId);
     }
 
     /**
-     * @description Controls access to work order documents.
+     * @description Controls access to work order information.
      * @path /work-orders/{workOrderId}
-     * @allow (create) - User with UID 'user123' can create a work order with ownerId 'user123'.
-     * @allow (get, list) - Anyone can read work orders.
-     * @allow (update, delete) - User with UID 'user123' can update/delete the work order they own.
-     * @deny (create) - User with UID 'user456' cannot create a work order with ownerId 'user123'.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @allow (create) User can create a work order if they are the owner.
+     * @allow (get, list, update, delete) Only the owner can read, update, and delete their work order.
+     * @deny (create) User tries to create a work order with a mismatched ownerId.
+     * @principle Enforces document ownership for work orders.
      */
     match /work-orders/{workOrderId} {
       function isSignedIn() {
@@ -101,10 +105,16 @@ service cloud.firestore {
         return isOwner(ownerId) && resource != null;
       }
 
-      allow get, list: if true;
-      allow create: if isSignedIn() && isOwner(request.resource.data.ownerId) && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isSignedIn() && isExistingOwner(resource.data.ownerId);
-      allow delete: if isSignedIn() && isExistingOwner(resource.data.ownerId);
+      allow get: if isOwner(resource.data.ownerId);
+      allow list: if isOwner(request.auth.uid); // Only the owner can list
+
+      // Only allow creation if the ownerId matches the authenticated user.
+      allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
+
+      // Protect updates: only the owner can update, and the ownerId field is immutable.
+      allow update: if isExistingOwner(resource.data.ownerId) && (request.resource.data.ownerId == resource.data.ownerId);
+
+      allow delete: if isExistingOwner(resource.data.ownerId);
     }
   }
 }

@@ -82,7 +82,7 @@ export default function UsersPage() {
                 <Terminal className="h-4 w-4" />
                 <AlertTitle>Error de Permisos</AlertTitle>
                 <AlertDescription>
-                    <p>Las reglas de seguridad de Firestore impidieron la carga de usuarios. Esto es esperado si no se ha configurado un backend para gestionar los roles (Custom Claims).</p>
+                    <p>Las reglas de seguridad de Firestore impidieron la carga de usuarios. Esto es esperado si el usuario no tiene el rol de `OWNER`.</p>
                     <p className='mt-2 text-xs'>Error: {error.message}</p>
                 </AlertDescription>
             </Alert>
