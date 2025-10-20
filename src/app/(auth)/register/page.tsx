@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +30,7 @@ import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore } from '@/firebase';
 import { Loader2 } from 'lucide-react';
-import { PERMISSIONS, ROLES } from '@/lib/permissions';
+import { ROLES } from '@/lib/permissions';
 
 const formSchema = z.object({
   firstName: z.string().min(1, { message: 'El nombre es obligatorio.' }),
@@ -65,38 +65,35 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 2. Create user profile in Firestore, but only if it doesn't exist
+      // 2. Create or OVERWRITE user profile in Firestore
       const userRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userRef);
+      
+      // For simplicity, the first user is always a SUPER_ADMIN.
+      // In a real app, this would be handled differently (e.g., via an invite system or Cloud Function).
+      const defaultRole = 'SUPER_ADMIN'; 
+      const roleInfo = ROLES[defaultRole as keyof typeof ROLES];
 
-      if (!userDoc.exists()) {
-        // Assign SUPER_ADMIN role for the first user or based on specific logic
-        // For simplicity, we'll make the first registered user a SUPER_ADMIN.
-        // In a real app, this would be handled by an admin panel or a Cloud Function.
-        const defaultRole = 'SUPER_ADMIN'; 
-        const roleInfo = ROLES[defaultRole as keyof typeof ROLES];
-
-        await setDoc(userRef, {
-          uid: user.uid,
-          email: values.email,
-          firstName: values.firstName,
-          lastName: values.lastName,
-          role: defaultRole,
-          permissions: roleInfo.permissions, // Assign all permissions for the role
-          createdAt: serverTimestamp(),
-          isActive: true,
-          photoUrl: `https://avatar.vercel.sh/${values.email}.png`
-        });
-         toast({
-            title: 'Registro exitoso',
-            description: 'Tu cuenta de súper administrador ha sido creada.',
-          });
-      } else {
-         toast({
-            title: 'Bienvenido de nuevo',
-            description: 'Ya tenías un perfil creado. Iniciando sesión...',
-          });
+      if (!roleInfo) {
+        throw new Error('No se encontró la configuración para el rol de SUPER_ADMIN.');
       }
+      
+      // Always set/overwrite the document to ensure permissions are correct.
+      await setDoc(userRef, {
+        uid: user.uid,
+        email: values.email,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        role: defaultRole,
+        permissions: roleInfo.permissions, // Assign all permissions for the role
+        createdAt: serverTimestamp(),
+        isActive: true,
+        photoUrl: `https://avatar.vercel.sh/${values.email}.png`
+      });
+
+      toast({
+        title: 'Registro exitoso',
+        description: 'Tu cuenta de súper administrador ha sido creada correctamente.',
+      });
 
       router.push('/');
     } catch (error: any) {
