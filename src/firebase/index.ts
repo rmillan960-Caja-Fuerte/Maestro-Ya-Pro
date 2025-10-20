@@ -37,10 +37,13 @@ export function initializeFirebase() {
 
 export function getSdks(firebaseApp: FirebaseApp) {
     const isBrowser = typeof window !== 'undefined';
+    const firestore = getFirestore(firebaseApp);
+    const auth = getAuth(firebaseApp);
+    
     return {
       firebaseApp,
-      auth: getAuth(firebaseApp),
-      firestore: getFirestore(firebaseApp),
+      auth,
+      firestore,
       analytics: isBrowser ? getAnalytics(firebaseApp) : null,
       performance: isBrowser ? getPerformance(firebaseApp) : null,
       crashlytics: null,

@@ -196,9 +196,9 @@
         "subtotal": { "type": "number" },
         "tax": { "type": "number" },
         "total": { "type": "number" },
+        "balance": { "type": "number", "description": "Remaining balance to be paid." },
         "currency": { "type": "string", "default": "USD" },
         "payments": { "type": "array", "items": { "$ref": "#/entities/WorkOrderPayment" } },
-        "balance": { "type": "number", "description": "Remaining balance to be paid." },
         "evidence": { "type": "array", "items": { "$ref": "#/entities/WorkOrderEvidence" } },
         "scheduledDate": { "type": "string", "format": "date-time" },
         "completionDate": { "type": "string", "format": "date-time", "description": "The date when the work was officially completed." },
@@ -275,5 +275,3 @@
     }
   }
 }
-
-    

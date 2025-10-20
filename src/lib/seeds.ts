@@ -1,7 +1,7 @@
 
 'use server';
 
-import { firestore } from '@/firebase/index.ts';
+import { firestore } from '@/firebase/index';
 import { doc, setDoc } from 'firebase/firestore';
 import { ROLES } from './permissions';
 

@@ -140,5 +140,3 @@ export const statuses = [
     color: "bg-indigo-500",
   },
 ]
-
-    
