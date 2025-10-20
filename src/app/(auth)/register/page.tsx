@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,7 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDocs, collection, query, limit } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDocs, collection, query, limit, getDoc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +42,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// This function checks if there are any users in the 'users' collection.
 async function isFirstUser(db: any): Promise<boolean> {
     if (!db) return false;
     const usersCollection = collection(db, 'users');
@@ -49,7 +49,6 @@ async function isFirstUser(db: any): Promise<boolean> {
     const querySnapshot = await getDocs(q);
     return querySnapshot.empty;
 }
-
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = React.useState(false);
@@ -71,15 +70,12 @@ export default function RegisterPage() {
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     try {
-      // 1. Check if this will be the first user in the database.
       const isFirst = await isFirstUser(firestore);
       const finalRole = isFirst ? 'SUPER_ADMIN' : 'OPERATOR';
-      
-      // 2. Create user in Firebase Auth
+
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // 3. Create user profile in Firestore with the determined role
       const userRef = doc(firestore, 'users', user.uid);
       const roleInfo = ROLES[finalRole as keyof typeof ROLES];
 
@@ -87,7 +83,7 @@ export default function RegisterPage() {
         throw new Error(`Configuración de rol no encontrada para ${finalRole}.`);
       }
       
-      await setDoc(userRef, {
+      const userData = {
         uid: user.uid,
         email: values.email,
         firstName: values.firstName,
@@ -97,30 +93,51 @@ export default function RegisterPage() {
         createdAt: serverTimestamp(),
         isActive: true,
         photoUrl: `https://avatar.vercel.sh/${values.email}.png`
-      });
+      };
 
-      // IMPORTANT: In a real production app, a Cloud Function triggered on user creation
-      // would be used to set the custom claim. For this prototype, this will be handled
-      // by a separate manual script.
-      if (finalRole === 'SUPER_ADMIN') {
-        toast({
-          title: '¡Super Admin Creado!',
-          description: `Tu cuenta ha sido creada. En el siguiente paso, te ayudaremos a configurar tus superpoderes.`,
-        });
-      } else {
-        toast({
-            title: 'Registro exitoso',
-            description: `Tu cuenta de ${roleInfo.name} ha sido creada. Serás redirigido.`,
-        });
+      await setDoc(userRef, userData);
+      
+      // Special logic for your account to ensure it's SUPER_ADMIN
+      if (values.email === 'rmillan960@gmail.com' && finalRole !== 'SUPER_ADMIN') {
+        await updateDoc(userRef, { role: 'SUPER_ADMIN', permissions: ROLES.SUPER_ADMIN.permissions });
+        console.log('Forcefully updated rmillan960@gmail.com to SUPER_ADMIN.');
+        // NOTE: A cloud function would be needed to set the custom claim here.
+        // This will be done manually or via a separate script for now.
       }
 
+
+      toast({
+        title: 'Registro exitoso',
+        description: `Tu cuenta de ${roleInfo.name} ha sido creada. Serás redirigido.`,
+      });
+      
       router.push('/');
+
     } catch (error: any) {
       console.error('Error signing up:', error);
       
       let description = 'No se pudo crear tu cuenta. Por favor, inténtalo de nuevo.';
       if (error.code === 'auth/email-already-in-use') {
-        description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión o usa un correo diferente.';
+        description = 'Este correo electrónico ya está en uso. Intenta iniciar sesión.';
+
+        // If the email is yours, try to fix the role.
+        if (values.email === 'rmillan960@gmail.com' && firestore) {
+            const querySnapshot = await getDocs(query(collection(firestore, "users"), where("email", "==", values.email), limit(1)));
+            if (!querySnapshot.empty) {
+                const userDoc = querySnapshot.docs[0];
+                if (userDoc.data().role !== 'SUPER_ADMIN') {
+                    await updateDoc(userDoc.ref, { role: 'SUPER_ADMIN', permissions: ROLES.SUPER_ADMIN.permissions });
+                    toast({
+                      title: "Cuenta Corregida",
+                      description: "Hemos actualizado tu rol a Super Admin. Por favor, inicia sesión.",
+                    });
+                    router.push('/login');
+                    setIsLoading(false);
+                    return;
+                }
+            }
+        }
+
       }
       
       toast({

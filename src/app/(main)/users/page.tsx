@@ -1,8 +1,9 @@
+
 'use client';
 
 import * as React from 'react';
-import { collection, query, doc } from 'firebase/firestore';
-import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import {
   Card,
   CardContent,
@@ -15,42 +16,40 @@ import { columns } from './components/user-columns';
 import { UserTable } from './components/user-table';
 import type { UserProfile } from './data/schema';
 import { useRouter } from 'next/navigation';
-import { getAuth, type User as AuthUser, onIdTokenChanged } from 'firebase/auth';
-
-interface UserToken extends AuthUser {
-    customClaims?: {
-        role?: string;
-    };
-}
-
+import { getAuth, onIdTokenChanged } from 'firebase/auth';
 
 export default function UsersPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
   const router = useRouter();
   const [isSuperAdmin, setIsSuperAdmin] = React.useState<boolean | null>(null);
-  
+
   React.useEffect(() => {
-    if (isAuthLoading) return; // Wait for auth to be ready
+    if (isAuthLoading) return;
     if (!user) {
-        setIsSuperAdmin(false);
-        router.replace('/'); // Redirect if not logged in
-        return;
+      router.replace('/');
+      return;
     }
 
     const auth = getAuth();
     const unsubscribe = onIdTokenChanged(auth, async (userWithClaims) => {
-        if (userWithClaims) {
-            const idTokenResult = await userWithClaims.getIdTokenResult();
-            const isAdmin = idTokenResult.claims.role === 'SUPER_ADMIN';
-            setIsSuperAdmin(isAdmin);
-            if (!isAdmin) {
-                router.replace('/');
-            }
-        } else {
-            setIsSuperAdmin(false);
+      if (userWithClaims) {
+        try {
+          const idTokenResult = await userWithClaims.getIdTokenResult(true); // Force refresh
+          const isAdmin = idTokenResult.claims.role === 'SUPER_ADMIN';
+          setIsSuperAdmin(isAdmin);
+          if (!isAdmin) {
             router.replace('/');
+          }
+        } catch (error) {
+          console.error("Error getting ID token result:", error);
+          setIsSuperAdmin(false);
+          router.replace('/');
         }
+      } else {
+        setIsSuperAdmin(false);
+        router.replace('/');
+      }
     });
 
     return () => unsubscribe();
@@ -58,7 +57,7 @@ export default function UsersPage() {
 
   const usersQuery = useMemoFirebase(() => {
     // Only execute the query if we have confirmed the user is a SUPER_ADMIN
-    if (isSuperAdmin) {
+    if (firestore && isSuperAdmin === true) {
       return query(collection(firestore, 'users'));
     }
     return null;
@@ -67,9 +66,8 @@ export default function UsersPage() {
   // The hook will not run if usersQuery is null.
   const { data: users, isLoading: isDataLoading } = useCollection<UserProfile>(usersQuery, isSuperAdmin === true);
 
-  const isLoading = isAuthLoading || isSuperAdmin === null || (isSuperAdmin && isDataLoading);
-  
-  // Render nothing or a loading state until redirection check is complete and role is confirmed
+  const isLoading = isAuthLoading || isSuperAdmin === null || (isSuperAdmin === true && isDataLoading);
+
   if (isSuperAdmin === null) {
     return (
         <Card>
@@ -103,7 +101,6 @@ export default function UsersPage() {
         </Card>
     );
   }
-
 
   return (
     <Card>
