@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -27,6 +28,11 @@ import {
 
 import { ClientTableToolbar } from "./client-table-toolbar"
 import { ClientTablePagination } from "./client-table-pagination"
+import { Client } from "../data/schema"
+import { doc, setDoc, addDoc, collection } from "firebase/firestore"
+import { useFirestore } from "@/firebase"
+import { useToast } from "@/hooks/use-toast"
+import { ClientFormDialog } from "./client-form-dialog"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -44,6 +50,11 @@ export function ClientTable<TData, TValue>({
     []
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [selectedClient, setSelectedClient] = React.useState<Client | null>(null);
+
+  const firestore = useFirestore();
+  const { toast } = useToast();
 
   const table = useReactTable({
     data,
@@ -53,6 +64,12 @@ export function ClientTable<TData, TValue>({
       columnVisibility,
       rowSelection,
       columnFilters,
+    },
+    meta: {
+      openForm: (client?: Client) => {
+        setSelectedClient(client || null);
+        setIsFormOpen(true);
+      }
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -66,6 +83,37 @@ export function ClientTable<TData, TValue>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
+
+  const handleSaveClient = async (clientData: Omit<Client, 'id'>) => {
+    try {
+      if (selectedClient && selectedClient.id) {
+        // Update existing client
+        const clientRef = doc(firestore, "clients", selectedClient.id);
+        await setDoc(clientRef, clientData, { merge: true });
+        toast({
+          title: "Cliente actualizado",
+          description: "La información del cliente ha sido actualizada.",
+        });
+      } else {
+        // Create new client
+        await addDoc(collection(firestore, "clients"), clientData);
+        toast({
+          title: "Cliente creado",
+          description: "El nuevo cliente ha sido añadido a tu lista.",
+        });
+      }
+      setIsFormOpen(false);
+      setSelectedClient(null);
+    } catch (error) {
+      console.error("Error saving client:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo guardar el cliente. Inténtalo de nuevo.",
+      });
+    }
+  };
+
 
   return (
     <div className="space-y-4">
@@ -113,7 +161,7 @@ export function ClientTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No se encontraron resultados.
+                  No se encontraron clientes.
                 </TableCell>
               </TableRow>
             )}
@@ -121,6 +169,12 @@ export function ClientTable<TData, TValue>({
         </Table>
       </div>
       <ClientTablePagination table={table} />
+      <ClientFormDialog
+        isOpen={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        onSave={handleSaveClient}
+        client={selectedClient}
+      />
     </div>
   )
 }

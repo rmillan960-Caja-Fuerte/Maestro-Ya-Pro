@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Row } from "@tanstack/react-table"
@@ -12,6 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
+import { Client } from "../data/schema"
+import { doc, deleteDoc } from "firebase/firestore"
+import { useFirestore } from "@/firebase"
 
 interface ClientTableRowActionsProps<TData> {
   row: Row<TData>
@@ -21,15 +25,25 @@ export function ClientTableRowActions<TData>({
   row,
 }: ClientTableRowActionsProps<TData>) {
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const { openForm } = row.table.options.meta as { openForm: (client?: any) => void };
 
-  const handleEdit = () => {
-    // Logic for editing a client
-    toast({ title: "Próximamente", description: "La edición de clientes estará disponible pronto." });
-  }
-
-  const handleDelete = () => {
-    // Logic for deleting a client
-    toast({ variant: "destructive", title: "Próximamente", description: "La eliminación de clientes estará disponible pronto." });
+  const handleDelete = async () => {
+    try {
+      const client = row.original as Client;
+      await deleteDoc(doc(firestore, "clients", client.id));
+      toast({
+        title: "Cliente eliminado",
+        description: "El cliente ha sido eliminado correctamente.",
+      });
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar el cliente. Inténtalo de nuevo.",
+      });
+    }
   }
 
   return (
@@ -44,11 +58,15 @@ export function ClientTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem onClick={handleEdit}>Editar</DropdownMenuItem>
-        <DropdownMenuItem>Ver Perfil</DropdownMenuItem>
-        <DropdownMenuItem>Crear Orden</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openForm(row.original)}>Editar</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => toast({ title: "Próximamente", description: "La vista de perfil de cliente estará disponible pronto." })}>
+          Ver Perfil
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => toast({ title: "Próximamente", description: "La creación de órdenes desde aquí estará disponible pronto." })}>
+          Crear Orden
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+        <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
           Eliminar
         </DropdownMenuItem>
       </DropdownMenuContent>
