@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -14,6 +15,7 @@ import {
   MessageSquare,
   Settings,
   Sparkles,
+  Users,
   UsersRound,
 } from 'lucide-react';
 import {
@@ -25,21 +27,33 @@ import {
 import { cn } from '@/lib/utils';
 import { Logo } from '../logo';
 import { Button } from '../ui/button';
+import { PERMISSIONS } from '@/lib/permissions';
 
 const navItems = [
-  { href: '/', icon: LayoutGrid, label: 'Dashboard' },
-  { href: '/clients', icon: UsersRound, label: 'Clientes' },
-  { href: '/masters', icon: Construction, label: 'Maestros' },
-  { href: '/work-orders', icon: FileText, label: 'Órdenes' },
-  { href: '/ai', icon: Sparkles, label: 'Asistente IA' },
+  { href: '/', icon: LayoutGrid, label: 'Dashboard', requiredPermission: null },
+  { href: '/clients', icon: UsersRound, label: 'Clientes', requiredPermission: PERMISSIONS.VIEW_CLIENTS },
+  { href: '/masters', icon: Construction, label: 'Maestros', requiredPermission: PERMISSIONS.VIEW_MASTERS },
+  { href: '/work-orders', icon: FileText, label: 'Órdenes', requiredPermission: PERMISSIONS.VIEW_WORK_ORDERS },
+  { href: '/users', icon: Users, label: 'Usuarios', requiredPermission: PERMISSIONS.MANAGE_USERS },
+  { href: '/ai', icon: Sparkles, label: 'Asistente IA', requiredPermission: null },
 ];
 
-export default function AppSidebar({ isMobile = false }: { isMobile?: boolean }) {
+export default function AppSidebar({ isMobile = false, userRole }: { isMobile?: boolean, userRole?: string }) {
   const pathname = usePathname();
+  
+  // This is a simple permission check. In a real app, you'd get this from the user's session.
+  const userPermissions = (userRole && PERMISSIONS.ROLES[userRole as keyof typeof PERMISSIONS.ROLES]?.permissions) || [];
+
+  const visibleNavItems = navItems.filter(item => {
+    if (item.href === '/users') {
+        return userRole === 'SUPER_ADMIN';
+    }
+    return true; // Other items are visible to all for now
+  });
 
   const navContent = (
     <nav className="grid gap-1 p-2">
-      {navItems.map((item) => (
+      {visibleNavItems.map((item) => (
         <Tooltip key={item.href}>
           <TooltipTrigger asChild>
             <Link href={item.href}>
@@ -92,7 +106,7 @@ export default function AppSidebar({ isMobile = false }: { isMobile?: boolean })
   );
 
   return (
-    <aside className={cn("h-screen bg-sidebar text-sidebar-foreground", { 'hidden sm:flex flex-col border-r border-sidebar-border': !isMobile })}>
+    <aside className={cn("h-screen bg-sidebar text-sidebar-foreground", { 'hidden sm:flex flex-col border-r border-sidebar-border': !isMobile, 'flex flex-col': isMobile })}>
       <div className="border-b border-sidebar-border p-2">
         <Link href="/" className="flex items-center justify-center gap-2 font-semibold text-lg font-headline">
           <Button variant="outline" size="icon" aria-label="Home" className="bg-sidebar-accent border-sidebar-border hover:bg-sidebar-primary">
