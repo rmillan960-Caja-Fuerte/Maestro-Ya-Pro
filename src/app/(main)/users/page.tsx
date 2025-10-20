@@ -34,7 +34,7 @@ export default function UsersPage() {
 
   React.useEffect(() => {
     // Wait until profile is loaded to make a decision
-    if (!isAuthLoading && !isProfileLoading && userProfile?.role !== 'SUPER_ADMIN') {
+    if (!isAuthLoading && !isProfileLoading && userProfile && userProfile?.role !== 'SUPER_ADMIN') {
       router.replace('/');
     }
   }, [isAuthLoading, isProfileLoading, userProfile, router]);
@@ -53,7 +53,7 @@ export default function UsersPage() {
 
   const isLoading = isAuthLoading || isProfileLoading || (canFetchUsers && isDataLoading);
 
-  if (!isAuthLoading && !isProfileLoading && userProfile?.role !== 'SUPER_ADMIN') {
+  if (!isAuthLoading && !isProfileLoading && userProfile && userProfile?.role !== 'SUPER_ADMIN') {
      return (
         <Card>
             <CardHeader>
