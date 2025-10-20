@@ -23,21 +23,29 @@ export default function WorkOrdersPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: isAuthLoading } = useUser();
 
-  // 1. Define stable queries for all needed collections
+  // 1. Define stable queries for all needed collections, ensuring user UID exists.
   const workOrdersQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid ? null : query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')),
+    !firestore || !user?.uid 
+      ? null 
+      : query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')),
     [firestore, user?.uid]
   );
+  
   const clientsQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid ? null : query(collection(firestore, 'clients'), where('ownerId', '==', user.uid)),
+    !firestore || !user?.uid 
+      ? null 
+      : query(collection(firestore, 'clients'), where('ownerId', '==', user.uid)),
     [firestore, user?.uid]
   );
+  
   const mastersQuery = useMemoFirebase(() => 
-    !firestore || !user?.uid ? null : query(collection(firestore, 'masters'), where('ownerId', '==', user.uid)),
+    !firestore || !user?.uid 
+      ? null 
+      : query(collection(firestore, 'masters'), where('ownerId', '==', user.uid)),
     [firestore, user?.uid]
   );
 
-  // 2. Fetch data from all collections in parallel
+  // 2. Fetch data from all collections in parallel. useCollection will handle null queries.
   const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery);
   const { data: clients, isLoading: isLoadingClients } = useCollection<Client>(clientsQuery);
   const { data: masters, isLoading: isLoadingMasters } = useCollection<Master>(mastersQuery);
@@ -46,9 +54,9 @@ export default function WorkOrdersPage() {
   const isLoading = isAuthLoading || (user && (isLoadingWorkOrders || isLoadingClients || isLoadingMasters));
 
 
-  // 3. Enrich the work orders with client and master names
+  // 3. Enrich the work orders with client and master names once all data is loaded
   const enrichedWorkOrders = React.useMemo(() => {
-    if (!workOrders || !clients || !masters) return [];
+    if (isLoading || !workOrders || !clients || !masters) return [];
 
     const clientsMap = new Map(clients.map(c => [c.id, c.type === 'business' ? c.businessName : `${c.firstName} ${c.lastName}`]));
     const mastersMap = new Map(masters.map(m => [m.id, `${m.firstName} ${m.lastName}`]));
@@ -58,7 +66,7 @@ export default function WorkOrdersPage() {
       clientName: clientsMap.get(wo.clientId) || 'Cliente Desconocido',
       masterName: wo.masterId ? (mastersMap.get(wo.masterId) || 'Maestro no encontrado') : 'No Asignado',
     }));
-  }, [workOrders, clients, masters]);
+  }, [isLoading, workOrders, clients, masters]);
 
 
   return (
