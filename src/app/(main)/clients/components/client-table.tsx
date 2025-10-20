@@ -31,10 +31,12 @@ import { ClientTableToolbar } from "./client-table-toolbar"
 import { ClientTablePagination } from "./client-table-pagination"
 import { clientSchema, type Client } from "../data/schema"
 import { doc, setDoc, addDoc, collection } from "firebase/firestore"
-import { useFirestore } from "@/firebase"
+import { useFirestore, useUser } from "@/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { ClientFormDialog } from "./client-form-dialog"
 import type { z } from "zod"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -56,21 +58,44 @@ export function ClientTable<TData, TValue>({
   const [selectedClient, setSelectedClient] = React.useState<z.infer<typeof clientSchema> | null>(null);
 
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const handleSaveClient = async (clientData: Omit<Client, 'id'>) => {
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Error de autenticación",
+            description: "Debes iniciar sesión para guardar un cliente.",
+        });
+        return;
+    }
+
     try {
       if (selectedClient && selectedClient.id) {
         // Update existing client
         const clientRef = doc(firestore, "clients", selectedClient.id);
-        await setDoc(clientRef, clientData, { merge: true });
+        setDoc(clientRef, clientData, { merge: true }).catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: clientRef.path,
+                operation: 'update',
+                requestResourceData: clientData,
+            }))
+        });
         toast({
           title: "Cliente actualizado",
           description: "La información del cliente ha sido actualizada.",
         });
       } else {
         // Create new client
-        await addDoc(collection(firestore, "clients"), clientData);
+        const dataToSave = { ...clientData, ownerId: user.uid };
+        addDoc(collection(firestore, "clients"), dataToSave).catch(err => {
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: 'clients',
+                operation: 'create',
+                requestResourceData: dataToSave,
+            }))
+        });
         toast({
           title: "Cliente creado",
           description: "El nuevo cliente ha sido añadido a tu lista.",
@@ -79,6 +104,7 @@ export function ClientTable<TData, TValue>({
       setIsFormOpen(false);
       setSelectedClient(null);
     } catch (error) {
+      // This catch block is kept as a fallback, but specific permission errors are handled above.
       console.error("Error saving client:", error);
       toast({
         variant: "destructive",
