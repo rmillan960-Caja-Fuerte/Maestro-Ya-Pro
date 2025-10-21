@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -35,7 +35,7 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import type { ChartConfig } from '@/components/ui/chart';
-import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { FirebaseContext, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where, Timestamp, doc, type CollectionReference, type Query } from 'firebase/firestore';
 import { type WorkOrder, statuses as workOrderStatuses } from './work-orders/data/schema';
 import { specialties } from './masters/data/schema';
@@ -61,44 +61,34 @@ const ordersChartConfig: ChartConfig = specialties.reduce((acc, specialty, index
 }, { count: { label: 'Órdenes' } } as ChartConfig);
 
 
-export default function DashboardPage() {
-  const firestore = useFirestore();
-  const { user, isUserLoading: isAuthLoading } = useUser();
-  const [selectedCountry, setSelectedCountry] = React.useState<string | 'all'>('all');
-  
-  const userDocRef = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user?.uid]);
-  
+function DashboardPageContent() {
+  const { firestore, user: authUser, userError, isUserLoading } = useContext(FirebaseContext)!;
+  const [selectedCountry, setSelectedCountry] = useState<string | 'all'>('all');
+
+  const userDocRef = useMemo(() => {
+    if (!firestore || !authUser?.uid) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser?.uid]);
+
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string, country?: string}>(userDocRef);
 
-  // Queries - Memoized and dependent on user.uid and userProfile
-  const workOrdersQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !userProfile) return null;
-    
-    let q: CollectionReference | Query;
-
+  const workOrdersQuery = useMemo(() => {
+    if (!firestore || !authUser?.uid || !userProfile) return null;
+    let q: Query;
     if (userProfile.role === 'OWNER') {
       q = collection(firestore, 'work-orders');
       if (selectedCountry !== 'all') {
         q = query(q, where('country', '==', selectedCountry));
       }
     } else {
-      q = query(collection(firestore, 'work-orders'), where('ownerId', '==', user.uid));
+      q = query(collection(firestore, 'work-orders'), where('ownerId', '==', authUser.uid));
     }
-    
     return query(q, orderBy('createdAt', 'desc'));
-  }, [firestore, user?.uid, userProfile, selectedCountry]);
-  
+  }, [firestore, authUser?.uid, userProfile, selectedCountry]);
 
-  // Data fetching - useCollection will not run if query is null
-  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery, !!userProfile);
-  
-  const isLoading = isAuthLoading || isProfileLoading || (user && isLoadingWorkOrders);
+  const { data: workOrders, isLoading: isLoadingWorkOrders } = useCollection<WorkOrder>(workOrdersQuery);
 
-  // Memoized data processing
-  const dashboardData = React.useMemo(() => {
+  const dashboardData = useMemo(() => {
     if (!workOrders) return {
         kpi: { monthlyRevenue: 0, activeOrders: 0, conversionRate: 0, averageTicket: 0 },
         recentOrders: [],
@@ -132,7 +122,6 @@ export default function DashboardPage() {
     
     const recentOrders = workOrders.slice(0, 5);
 
-    // Revenue Chart Data
     const monthlyRevenueData: { [key: number]: number } = {};
     workOrders.forEach(wo => {
         if (wo.status === 'paid' && wo.completionDate) {
@@ -155,7 +144,6 @@ export default function DashboardPage() {
         };
     });
 
-    // Orders by category chart
     const ordersByCategoryMap = new Map<string, number>();
     workOrders.forEach(wo => {
         if (wo.category) {
@@ -179,7 +167,6 @@ export default function DashboardPage() {
         revenueChart,
         ordersByCategory,
     };
-
   }, [workOrders]);
 
   const kpiData = [
@@ -188,57 +175,6 @@ export default function DashboardPage() {
     { title: 'Tasa de Conversión', value: `${dashboardData.kpi.conversionRate.toFixed(1)}%`, icon: CreditCard, key: 'conversionRate' },
     { title: 'Ticket Promedio', value: formatCurrency(dashboardData.kpi.averageTicket), icon: Activity, key: 'averageTicket' },
   ];
-
-  if (isLoading) {
-    return (
-        <>
-            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-                {[...Array(4)].map((_, i) => (
-                     <Card key={i}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                           <Skeleton className="h-4 w-2/3" />
-                        </CardHeader>
-                        <CardContent>
-                            <Skeleton className="h-7 w-1/2" />
-                            <Skeleton className="h-3 w-1/3 mt-1" />
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-            <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-                <Card className="xl:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Resumen de Ingresos</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pl-2">
-                         <Skeleton className="h-[300px] w-full" />
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Órdenes por Categoría</CardTitle>
-                        <CardDescription>Cargando datos...</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 pb-0 flex items-center justify-center">
-                        <Skeleton className="h-[250px] w-[250px] rounded-full" />
-                    </CardContent>
-                </Card>
-            </div>
-             <Card>
-                <CardHeader>
-                    <CardTitle>Órdenes Recientes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <Skeleton className="h-8 w-full" />
-                        <Skeleton className="h-8 w-full" />
-                        <Skeleton className="h-8 w-full" />
-                    </div>
-                </CardContent>
-            </Card>
-        </>
-    );
-  }
 
   return (
     <>
@@ -293,7 +229,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Órdenes por Categoría</CardTitle>
             <CardDescription>Resumen de todas las órdenes</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent className="flex-1 pb-0">
               <ChartContainer
                 config={ordersChartConfig}
@@ -335,9 +271,7 @@ export default function DashboardPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
-                <TableHead className="hidden sm:table-cell">
-                  Nro. Orden
-                </TableHead>
+                <TableHead className="hidden sm:table-cell">Nro. Orden</TableHead>
                 <TableHead className="hidden sm:table-cell">Estado</TableHead>
                 <TableHead className="hidden md:table-cell">Fecha Creación</TableHead>
                 <TableHead className="text-right">Total</TableHead>
@@ -349,20 +283,14 @@ export default function DashboardPage() {
                   <TableCell>
                     <div className="font-medium">{order.clientName || 'Cliente no asignado'}</div>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {order.orderNumber}
-                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">{order.orderNumber}</TableCell>
                   <TableCell className="hidden sm:table-cell">
                      <Badge className="text-xs" variant={workOrderStatuses.find(s => s.value === order.status)?.variant as any || "outline"}>
                       {workOrderStatuses.find(s => s.value === order.status)?.label || order.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {formatDate(order.createdAt as Date | Timestamp, 'short')}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(order.total)}
-                  </TableCell>
+                  <TableCell className="hidden md:table-cell">{formatDate(order.createdAt as Date | Timestamp, 'short')}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(order.total)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -371,4 +299,78 @@ export default function DashboardPage() {
       </Card>
     </>
   );
+}
+
+function DashboardLoadingSkeleton() {
+    return (
+        <>
+            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                     <Card key={i}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                           <Skeleton className="h-4 w-2/3" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-7 w-1/2" />
+                            <Skeleton className="h-3 w-1/3 mt-1" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+            <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+                <Card className="xl:col-span-2">
+                    <CardHeader>
+                        <CardTitle>Resumen de Ingresos</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pl-2">
+                         <Skeleton className="h-[300px] w-full" />
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Órdenes por Categoría</CardTitle>
+                        <CardDescription>Cargando datos...</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 pb-0 flex items-center justify-center">
+                        <Skeleton className="h-[250px] w-[250px] rounded-full" />
+                    </CardContent>
+                </Card>
+            </div>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Órdenes Recientes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                    </div>
+                </CardContent>
+            </Card>
+        </>
+    );
+}
+
+export default function DashboardPage() {
+    const firebaseContext = useContext(FirebaseContext);
+
+    // On the server, or during the initial client render, `firebaseContext` will be `undefined` or services won't be available.
+    // We must handle this case and show a loading state.
+    if (!firebaseContext || !firebaseContext.areServicesAvailable || firebaseContext.isUserLoading) {
+        return <DashboardLoadingSkeleton />;
+    }
+
+    // If there was an auth error, display it.
+    if (firebaseContext.userError) {
+        return <div className="p-8 text-center text-destructive">Error de autenticación. Por favor, recarga la página.</div>
+    }
+
+    // If we have services but no user, it could be a public page or the user is logged out.
+    if (!firebaseContext.user) {
+         return <div className="p-8 text-center text-muted-foreground">Por favor, inicia sesión para ver el dashboard.</div>
+    }
+
+    // Only if services are available and we have a user, render the actual content.
+    return <DashboardPageContent />;
 }
