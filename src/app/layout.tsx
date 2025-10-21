@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { FirebaseClientProvider } from '@/firebase';
+import { FirebaseProvider } from '@/firebase'; // Corrected import name
 
 export const metadata: Metadata = {
   title: 'Maestro-Ya Pro',
@@ -32,9 +32,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <FirebaseClientProvider>
+        <FirebaseProvider> {/* Corrected component name */}
           {children}
-        </FirebaseClientProvider>
+        </FirebaseProvider>
         <Toaster />
       </body>
     </html>
