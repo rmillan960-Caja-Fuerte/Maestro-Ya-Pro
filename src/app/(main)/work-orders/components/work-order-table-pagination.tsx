@@ -1,30 +1,17 @@
 
 "use client"
 
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react"
 import { Table } from "@tanstack/react-table"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface WorkOrderTablePaginationProps<TData> {
   table: Table<TData>
 }
 
-export function WorkOrderTablePagination<TData>({
-  table,
-}: WorkOrderTablePaginationProps<TData>) {
+export function WorkOrderTablePagination<TData>({ table }: WorkOrderTablePaginationProps<TData>) {
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex-1 text-sm text-muted-foreground">
@@ -81,7 +68,7 @@ export function WorkOrderTablePagination<TData>({
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            <span className="sr-only">Ir a la siguiente página</span>
+            <span className="sr-only">Ir a la página siguiente</span>
             <ChevronRight className="h-4 w-4" />
           </Button>
           <Button
@@ -98,5 +85,3 @@ export function WorkOrderTablePagination<TData>({
     </div>
   )
 }
-
-    

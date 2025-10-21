@@ -1,6 +1,6 @@
 
 import { z } from "zod"
-import { Circle, Clock, FileWarning, Pencil, CheckCircle2, Truck, DollarSign, XCircle, ShieldAlert, Wrench } from "lucide-react"
+import { Circle, Clock, FileWarning, Pencil, CheckCircle2, Truck, DollarSign, XCircle, ShieldAlert, Wrench, ArrowUpCircle, ArrowDownCircle, ArrowRightCircle } from "lucide-react"
 import { Timestamp } from "firebase/firestore"
 
 export const workOrderItemSchema = z.object({
@@ -46,6 +46,7 @@ export const workOrderSchema = z.object({
       "warranty_claim",
       "warranty_service",
     ]),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
   title: z.string().min(1, "El título es obligatorio."),
   category: z.string().optional(),
   description: z.string().optional(),
@@ -82,70 +83,68 @@ export const statuses = [
     value: "draft",
     label: "Borrador",
     icon: Pencil,
-    variant: "outline",
-    color: "",
   },
   {
     value: "quote_sent",
     label: "Cotizado",
     icon: FileWarning,
-    variant: "secondary",
-    color: "",
   },
   {
     value: "approved",
     label: "Aprobado",
     icon: CheckCircle2,
-    variant: "default",
-    color: "bg-green-500",
   },
   {
     value: "scheduled",
     label: "Agendado",
     icon: Clock,
-    variant: "default",
-    color: "bg-blue-500",
   },
   {
     value: "in_progress",
     label: "En Progreso",
     icon: Truck,
-    variant: "default",
-    color: "bg-yellow-500",
   },
   {
     value: "completed",
     label: "Completado",
     icon: CheckCircle2,
-    variant: "default",
-    color: "bg-green-700",
   },
   {
     value: "paid",
     label: "Pagado",
     icon: DollarSign,
-    variant: "default",
-    color: "bg-emerald-500",
   },
     {
     value: "cancelled",
     label: "Cancelado",
     icon: XCircle,
-    variant: "destructive",
-    color: "",
   },
   {
     value: "warranty_claim",
     label: "Reclamo Garantía",
     icon: ShieldAlert,
-    variant: "default",
-    color: "bg-orange-500",
   },
   {
     value: "warranty_service",
     label: "Servicio Garantía",
     icon: Wrench,
-    variant: "default",
-    color: "bg-indigo-500",
   },
+]
+
+export const priorities = [
+    {
+        label: "Baja",
+        value: "low",
+        icon: ArrowDownCircle,
+    },
+    {
+        label: "Media",
+        value: "medium",
+        icon: ArrowRightCircle,
+    },
+    {
+        label: "Alta",
+        value: "high",
+        icon: ArrowUpCircle,
+    },
 ]

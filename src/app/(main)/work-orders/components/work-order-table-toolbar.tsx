@@ -1,82 +1,65 @@
 
 "use client"
 
+import * as React from "react"
 import { Table } from "@tanstack/react-table"
-import { X, PlusCircle } from "lucide-react"
-import { DateRange } from "react-day-picker"
-import { useState, useEffect } from "react"
-
+import { PlusCircle, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { WorkOrderTableViewOptions } from "./work-order-table-view-options"
-import { DateRangePicker } from "@/components/ui/date-range-picker"
-import { statuses } from "../data/schema"
-import { WorkOrderTableFacetedFilter } from "./work-order-table-faceted-filter"
+import { DataTableViewOptions } from "@/components/data-table-view-options"
+import { DataTableFacetedFilter } from "@/components/data-table-faceted-filter"
+import { statuses, priorities } from "../data/schema"
 
+// The toolbar is now simpler. It no longer manages the dialog state.
+// It receives a function `onAdd` to be called when the user wants to add a new order.
 interface WorkOrderTableToolbarProps<TData> {
   table: Table<TData>
+  onAdd: () => void // New prop to signal the parent to open the dialog
 }
 
-export function WorkOrderTableToolbar<TData>({
-  table,
-}: WorkOrderTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0 || table.getState().globalFilter;
-  const { openForm } = table.options.meta as { openForm: () => void };
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-
-  useEffect(() => {
-    const createdAtColumn = table.getColumn("createdAt");
-    if (createdAtColumn) {
-      if (dateRange?.from && dateRange?.to) {
-        // Set the end of the day for the 'to' date
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999);
-        createdAtColumn.setFilterValue([dateRange.from, toDate]);
-      } else {
-        createdAtColumn.setFilterValue(undefined);
-      }
-    }
-  }, [dateRange, table]);
+export function WorkOrderTableToolbar<TData>({ table, onAdd }: WorkOrderTableToolbarProps<TData>) {
+  const isFiltered = table.getState().columnFilters.length > 0
 
   return (
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Buscar por cliente, título, maestro..."
+          placeholder="Buscar por cliente, maestro, N° o título..."
           value={(table.getState().globalFilter as string) ?? ""}
-          onChange={(event) =>
-            table.setGlobalFilter(event.target.value)
-          }
-          className="h-8 w-[150px] lg:w-[250px]"
+          onChange={(event) => table.setGlobalFilter(event.target.value)}
+          className="h-8 w-[150px] lg:w-[300px]"
         />
-        <DateRangePicker date={dateRange} onDateChange={setDateRange} className="h-8"/>
         {table.getColumn("status") && (
-          <WorkOrderTableFacetedFilter
+          <DataTableFacetedFilter
             column={table.getColumn("status")}
             title="Estado"
             options={statuses}
           />
         )}
+        {table.getColumn("priority") && (
+          <DataTableFacetedFilter
+            column={table.getColumn("priority")}
+            title="Prioridad"
+            options={priorities}
+          />
+        )}
         {isFiltered && (
           <Button
             variant="ghost"
-            onClick={() => {
-                table.resetColumnFilters()
-                table.setGlobalFilter(undefined);
-                setDateRange(undefined)
-            }}
+            onClick={() => table.resetColumnFilters()}
             className="h-8 px-2 lg:px-3"
           >
-            Limpiar
-            <X className="ml-2 h-4 w-4" />
+            Reset
+            <SlidersHorizontal className="ml-2 h-4 w-4" />
           </Button>
         )}
       </div>
       <div className="flex items-center space-x-2">
-        <WorkOrderTableViewOptions table={table} />
-        <Button size="sm" className="h-8" onClick={() => openForm()}>
+        <DataTableViewOptions table={table} />
+        {/* The button now calls the onAdd function passed from the parent */}
+        <Button className="h-8" onClick={onAdd}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Crear Orden
+            Añadir Orden
         </Button>
       </div>
     </div>

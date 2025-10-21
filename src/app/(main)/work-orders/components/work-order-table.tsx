@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -27,16 +28,10 @@ import {
 } from "@/components/ui/table"
 import { WorkOrderTableToolbar } from "./work-order-table-toolbar"
 import { WorkOrderTablePagination } from "./work-order-table-pagination"
-import { doc, setDoc, addDoc, collection, serverTimestamp, Timestamp } from "firebase/firestore"
-import { useFirestore, useUser } from "@/firebase"
-import { useToast } from "@/hooks/use-toast"
-import { workOrderSchema, type WorkOrder } from "../data/schema"
-import { generateOrderNumber } from "@/lib/utils"
-import { Client } from "@/app/(main)/clients/data/schema"
-import { Master } from "@/app/(main)/masters/data/schema"
-import { WorkOrderFormDialog } from "./work-order-form-dialog"
-import type { z } from "zod"
-
+import { WorkOrderFormDialog } from './work-order-form-dialog';
+import type { WorkOrder } from "../data/schema"
+import type { Client } from "@/app/(main)/clients/data/schema"
+import type { Master } from "@/app/(main)/masters/data/schema"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -45,24 +40,20 @@ interface DataTableProps<TData, TValue> {
   masters: Master[]
   workOrdersCount: number
   initialClientId?: string | null;
+  onWorkOrderSaved?: () => void;
 }
 
-const dateBetweenFilterFn: FilterFn<any> = (row, columnId, value, addMeta) => {
-  const date = row.getValue(columnId) as Date | Timestamp;
+const dateBetweenFilterFn: FilterFn<any> = (row, columnId, value) => {
+  const date = row.getValue(columnId) as Date;
   const [start, end] = value as [Date, Date];
-
-  const d = date instanceof Timestamp ? date.toDate() : date;
-
-  if (!d) return false;
-  
+  if (!date) return false;
   const startTime = start.getTime();
   const endTime = end.getTime();
-  const rowTime = d.getTime();
-
+  const rowTime = date.getTime();
   return rowTime >= startTime && rowTime <= endTime;
 };
 
-const globalFilterFn: FilterFn<any> = (row, columnId, value, addMeta) => {
+const globalFilterFn: FilterFn<any> = (row, columnId, value) => {
     const rowValues = [
       row.original.clientName,
       row.original.masterName,
@@ -73,103 +64,63 @@ const globalFilterFn: FilterFn<any> = (row, columnId, value, addMeta) => {
     return rowValues.includes(String(value).toLowerCase());
 };
 
-export function WorkOrderTable<TData, TValue>({
+export function WorkOrderTable<TData extends { id: string }, TValue>({
   columns,
   data,
   clients,
   masters,
-  workOrdersCount,
   initialClientId,
+  onWorkOrderSaved
 }: DataTableProps<TData, TValue>) {
+  const router = useRouter();
   const [rowSelection, setRowSelection] = React.useState({})
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({ globalFilter: false, title: true })
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: 'createdAt', desc: true }
-  ])
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: 'createdAt', desc: true }])
   const [globalFilter, setGlobalFilter] = React.useState('');
-  const [isFormOpen, setIsFormOpen] = React.useState(false);
-  const [selectedWorkOrder, setSelectedWorkOrder] = React.useState<z.infer<typeof workOrderSchema> | null>(null);
   
-  const firestore = useFirestore();
-  const { user } = useUser();
-  const { toast } = useToast();
+  // Centralized state for the dialog
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [selectedWorkOrder, setSelectedWorkOrder] = React.useState<WorkOrder | undefined>(undefined);
 
-  const handleSaveWorkOrder = async (workOrderData: Omit<WorkOrder, 'id' | 'orderNumber' | 'createdAt'>) => {
-    try {
-      if (selectedWorkOrder) {
-        // Update existing work order
-        const workOrderRef = doc(firestore, "work-orders", selectedWorkOrder.id);
-        await setDoc(workOrderRef, { ...workOrderData, updatedAt: serverTimestamp() }, { merge: true });
-        toast({
-          title: "Orden actualizada",
-          description: "La orden de trabajo ha sido actualizada.",
-        });
-      } else {
-        // Create new work order
-        if (!user) throw new Error("Usuario no autenticado.");
-        const newOrderNumber = generateOrderNumber(workOrdersCount);
-        const newWorkOrder = {
-          ...workOrderData,
-          ownerId: user.uid,
-          orderNumber: newOrderNumber,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }
-        await addDoc(collection(firestore, "work-orders"), newWorkOrder);
-        toast({
-          title: "Orden creada",
-          description: "La nueva orden de trabajo ha sido creada.",
-        });
-      }
-      setIsFormOpen(false);
-      setSelectedWorkOrder(null);
-    } catch (error) {
-      console.error("Error saving work order:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo guardar la orden de trabajo. Inténtalo de nuevo.",
-      });
-    }
-  };
-
-  const openForm = React.useCallback((workOrder?: z.infer<typeof workOrderSchema>, clientId?: string | null) => {
-    let wo = workOrder || null;
-    if (!wo && clientId) {
-      // Create a partial work order object with just the client ID
-      wo = { clientId } as z.infer<typeof workOrderSchema>;
-    }
-    setSelectedWorkOrder(wo);
+  // Unified function to open the dialog for editing or creating
+  const openForm = React.useCallback((workOrder?: WorkOrder) => {
+    setSelectedWorkOrder(workOrder);
     setIsFormOpen(true);
   }, []);
 
+  // Effect to handle the initial opening from a client page
   React.useEffect(() => {
     if (initialClientId) {
-      openForm(undefined, initialClientId);
+        const wo = { clientId: initialClientId } as WorkOrder;
+        openForm(wo);
     }
   }, [initialClientId, openForm]);
+
+  // Centralized handler for closing the dialog
+  const handleDialogClose = (open: boolean) => {
+      if(!open) {
+          setSelectedWorkOrder(undefined);
+      }
+      setIsFormOpen(open);
+  }
+
+  const handleSaveSuccess = () => {
+    handleDialogClose(false); 
+    if (onWorkOrderSaved) {
+      onWorkOrderSaved(); 
+    } else {
+      router.refresh(); 
+    }
+  };
 
   const table = useReactTable({
     data,
     columns,
-    filterFns: {
-        dateBetween: dateBetweenFilterFn,
-    },
+    filterFns: { dateBetween: dateBetweenFilterFn },
     globalFilterFn,
-    state: {
-      sorting,
-      columnVisibility,
-      rowSelection,
-      columnFilters,
-      globalFilter,
-    },
-    meta: {
-      openForm: (workOrder?: z.infer<typeof workOrderSchema>) => openForm(workOrder)
-    },
+    state: { sorting, columnVisibility, rowSelection, columnFilters, globalFilter },
+    meta: { openForm }, // Pass openForm to be used by the column actions
     onGlobalFilterChange: setGlobalFilter,
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
@@ -186,50 +137,31 @@ export function WorkOrderTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <WorkOrderTableToolbar table={table} />
+      {/* Pass the openForm function to the toolbar */}
+      <WorkOrderTableToolbar table={table} onAdd={() => openForm()} />
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} colSpan={header.colSpan}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
+                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   No se encontraron órdenes de trabajo.
                 </TableCell>
               </TableRow>
@@ -238,11 +170,12 @@ export function WorkOrderTable<TData, TValue>({
         </Table>
       </div>
       <WorkOrderTablePagination table={table} />
+      {/* The single, centralized dialog */}
        <WorkOrderFormDialog
         isOpen={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        onSave={handleSaveWorkOrder}
+        onOpenChange={handleDialogClose}
         workOrder={selectedWorkOrder}
+        onWorkOrderSaved={handleSaveSuccess}
         clients={clients}
         masters={masters}
       />

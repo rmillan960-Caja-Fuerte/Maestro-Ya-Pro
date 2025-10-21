@@ -1,136 +1,68 @@
-'use client';
 
-import * as React from 'react';
-import { collection, query, where, doc, setDoc, type CollectionReference, type Query } from 'firebase/firestore';
-import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { LayoutGrid, List } from 'lucide-react';
+'use client'; // This directive marks the component as a Client Component
 
-import { columns } from './components/client-columns';
-import { ClientTable } from './components/client-table';
-import { type Client, clientSchema } from './data/schema';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { CountryFilter } from '@/components/country-filter';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ClientKanbanView } from './components/client-kanban-view';
-import { useToast } from '@/hooks/use-toast';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { errorEmitter } from '@/firebase/error-emitter';
+import { useEffect, useState } from 'react';
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { firestore, auth } from "@/firebase";
+import { useAuthState } from 'react-firebase-hooks/auth'; // Using a hook for auth state
+import { Client } from "@/app/(main)/clients/data/schema";
+import { ClientsTable } from "./components/client-table";
+import { columns } from "./components/columns";
+import { Skeleton } from "@/components/ui/skeleton"; // For loading state
+
+async function getClients(userId: string): Promise<Client[]> {
+    const q = query(
+        collection(firestore, "clients"), 
+        where("ownerId", "==", userId),
+        orderBy("createdAt", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    const clients: Client[] = [];
+    querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        clients.push({ 
+            id: doc.id, 
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt || null),
+         } as Client);
+    });
+    return clients;
+}
 
 export default function ClientsPage() {
-  const firestore = useFirestore();
-  const { user, isUserLoading: isAuthLoading } = useUser();
-  const { toast } = useToast();
-  const [selectedCountry, setSelectedCountry] = React.useState<string | 'all'>('all');
-  const [view, setView] = React.useState('table');
-  
-  const userDocRef = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user?.uid]);
+    const [user, loading, error] = useAuthState(auth);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<{role: string, country?: string}>(userDocRef);
+    useEffect(() => {
+        if (user) {
+            getClients(user.uid)
+                .then(setClients)
+                .finally(() => setIsLoading(false));
+        } else if (!loading) {
+            setIsLoading(false);
+        }
+    }, [user, loading]);
 
-  const clientsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !userProfile) return null;
-    
-    let q: CollectionReference | Query;
-
-    // The OWNER can see all clients. They can also filter by country.
-    if (userProfile.role === 'OWNER') {
-      q = collection(firestore, 'clients');
-      if (selectedCountry !== 'all') {
-        q = query(q, where('country', '==', selectedCountry));
-      }
-    // Other roles only see clients they own.
-    } else {
-      q = query(collection(firestore, 'clients'), where('ownerId', '==', user.uid));
+    if (isLoading || loading) {
+        return <div className="p-8"><Skeleton className="h-96 w-full" /></div>; // Show a loader
     }
-    
-    return q;
-  }, [firestore, user?.uid, userProfile, selectedCountry]);
 
-  const { data: clients, isLoading: isDataLoading, error } = useCollection<Client>(clientsQuery, !!userProfile);
+    if (error || !user) {
+        return <div className="p-8">Please sign in to view clients.</div>;
+    }
 
-  const handleStatusChange = async (clientId: string, newStatus: 'active' | 'inactive' | 'pending') => {
-    const clientRef = doc(firestore, "clients", clientId);
-    setDoc(clientRef, { status: newStatus }, { merge: true }).then(() => {
-        toast({
-            title: "Estado actualizado",
-            description: "El estado del cliente ha sido cambiado.",
-        });
-    }).catch(err => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: clientRef.path,
-            operation: 'update',
-            requestResourceData: { status: newStatus },
-        }));
-        toast({
-            variant: "destructive",
-            title: "Error de Permiso",
-            description: "No tienes permiso para actualizar este cliente.",
-        });
-    });
-  };
-
-  const isLoading = isAuthLoading || isProfileLoading || (user && isDataLoading);
-
-  return (
-    <Card>
-      <CardHeader className="flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle>Clientes</CardTitle>
-          <CardDescription>
-            Administra los perfiles y la información de tus clientes.
-          </CardDescription>
-        </div>
-        <div className="flex items-center gap-2">
-            {userProfile?.role === 'OWNER' && (
-                <CountryFilter
-                    selectedCountry={selectedCountry}
-                    onCountryChange={setSelectedCountry}
-                />
-            )}
-            <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value)} aria-label="View mode">
-                <ToggleGroupItem value="table" aria-label="Table view">
-                    <List className="h-4 w-4" />
-                </ToggleGroupItem>
-                <ToggleGroupItem value="kanban" aria-label="Kanban view">
-                    <LayoutGrid className="h-4 w-4" />
-                </ToggleGroupItem>
-            </ToggleGroup>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-8 w-[250px]" />
-              <div className="flex items-center space-x-2">
-                <Skeleton className="h-8 w-[70px]" />
-                <Skeleton className="h-8 w-[120px]" />
-              </div>
+    return (
+        <div className="hidden h-full flex-1 flex-col space-y-8 p-8 md:flex">
+            <div className="flex items-center justify-between space-y-2">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Clientes</h2>
+                    <p className="text-muted-foreground">
+                        Aquí tienes la lista de todos tus clientes.
+                    </p>
+                </div>
             </div>
-            <div className="rounded-md border">
-              <div className="space-y-2 p-4">
-                <Skeleton className="h-6 w-full" />
-                <Skeleton className="h-6 w-full" />
-                <Skeleton className="h-6 w-full" />
-              </div>
-            </div>
-          </div>
-        ) : view === 'table' ? (
-          <ClientTable columns={columns} data={clients || []} />
-        ) : (
-          <ClientKanbanView clients={clients || []} onStatusChange={handleStatusChange} />
-        )}
-      </CardContent>
-    </Card>
-  );
+            <ClientsTable data={clients} columns={columns} />
+        </div>
+    );
 }

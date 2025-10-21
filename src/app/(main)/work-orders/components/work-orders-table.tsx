@@ -25,22 +25,31 @@ import {
     TableHeader, 
     TableRow 
 } from "@/components/ui/table"
-import { ClientTableToolbar } from "./client-table-toolbar"
-import { ClientTablePagination } from "./client-table-pagination"
+import { WorkOrderTableToolbar } from "./work-order-table-toolbar" // Will be created next
+import { WorkOrderTablePagination } from "./work-order-table-pagination" // Will be created next
+import { getColumns } from "./columns"
+import { Master } from "@/app/system/masters/data/schema"
+import { Client } from "@/app/(main)/clients/data/schema"
 
-interface ClientsTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+interface WorkOrdersTableProps<TData, TValue> {
+  data: TData[],
+  masters?: Master[],
+  clients?: Client[],
+  // Remove columns from here, as we'll generate them internally
 }
 
-export function ClientsTable<TData, TValue>({
-  columns,
+export function WorkOrdersTable<TData, TValue>({
   data,
-}: ClientsTableProps<TData, TValue>) {
+  masters = [],
+  clients = [],
+}: WorkOrdersTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+
+  // Generate columns internally based on the provided data context
+  const columns = React.useMemo(() => getColumns(masters, clients), [masters, clients]);
 
   const table = useReactTable({
     data,
@@ -65,7 +74,7 @@ export function ClientsTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-        <ClientTableToolbar table={table} />
+        <WorkOrderTableToolbar table={table} />
         <div className="rounded-md border">
             <Table>
                 <TableHeader>
@@ -103,14 +112,14 @@ export function ClientsTable<TData, TValue>({
                 ) : (
                     <TableRow>
                     <TableCell colSpan={columns.length} className="h-24 text-center">
-                        No se encontraron clientes.
+                        No se encontraron órdenes de trabajo.
                     </TableCell>
                     </TableRow>
                 )}
                 </TableBody>
             </Table>
         </div>
-        <ClientTablePagination table={table} />
+        <WorkOrderTablePagination table={table} />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 
 "use client"
 
+import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 
@@ -88,7 +89,11 @@ export const columns: ColumnDef<z.infer<typeof workOrderSchema>>[] = [
     header: ({ column }) => (
         <WorkOrderTableColumnHeader column={column} title="Título" />
     ),
-    cell: ({ row }) => <div className="font-medium">{row.getValue("title")}</div>,
+    cell: ({ row }) => (
+        <Link href={`/work-orders/${row.original.id}`} className="font-medium hover:underline">
+            {row.getValue("title")}
+        </Link>
+    ),
   },
   {
     accessorKey: "clientName",

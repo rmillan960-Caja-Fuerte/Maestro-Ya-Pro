@@ -1,46 +1,37 @@
-rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Global helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+    function isUserDoc() { return exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function getUserRole() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
+    function isOwnerRole() { return isSignedIn() && isUserDoc() && getUserRole() == 'OWNER'; }
+    function isOwner(userId) { return request.auth.uid == userId; }
 
-    function isOwnerRole() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'OWNER';
-    }
-
-    // Rules for the 'users' collection
+    // User Profile Rules
     match /users/{userId} {
-      function isOwnProfile() {
-        return request.auth.uid == userId;
-      }
-      allow get: if isSignedIn() && (isOwnProfile() || isOwnerRole());
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if isOwnerRole();
-      allow create: if isSignedIn() && isOwnProfile();
-      allow update: if isSignedIn() && (isOwnProfile() || isOwnerRole());
-      allow delete: if isOwnerRole();
-    }
-
-    // Rules for the 'masters' collection
-    match /masters/{masterId} {
-      allow get: if isSignedIn();
-      allow list: if isOwnerRole();
+      allow update: if isSignedIn() && isOwner(userId) && request.resource.data.role == resource.data.role;
       allow write: if isOwnerRole();
     }
 
-    // Rules for the 'work-orders' collection
-    match /work-orders/{workOrderId} {
-      allow get: if isSignedIn();
-      allow list: if isOwnerRole();
-      allow write: if isOwnerRole();
-    }
-
-    // ADDED: Rules for the 'clients' collection
+    // Business Collections
     match /clients/{clientId} {
-      allow get: if isSignedIn();
-      allow list: if isOwnerRole();
+      allow get: if isOwnerRole() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+      allow list: if isOwnerRole() || isSignedIn();
+      allow write: if isOwnerRole();
+    }
+
+    match /work-orders/{workOrderId} {
+      allow get: if isOwnerRole() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+      allow list: if isOwnerRole() || isSignedIn();
+      allow write: if isOwnerRole();
+    }
+
+    match /masters/{masterId} {
+      allow get: if isOwnerRole() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
+      allow list: if isOwnerRole() || isSignedIn();
       allow write: if isOwnerRole();
     }
   }
