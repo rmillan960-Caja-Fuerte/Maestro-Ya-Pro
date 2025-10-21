@@ -6,20 +6,21 @@ import { Firestore, getFirestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged, getAuth } from 'firebase/auth';
 import { FirebaseStorage, getStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { getFirebaseApp } from '@/firebase/index'; // Import the lazy initializer
+import { getFirebaseApp } from '@/firebase/index';
 
-// --- Interfaces for Context and Hooks ---
+// --- Interfaces ---
 export interface FirebaseContextState {
-  areServicesAvailable: boolean; 
+  areServicesAvailable: boolean;
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   auth: Auth | null;
   storage: FirebaseStorage | null;
   user: User | null;
-  isUserLoading: boolean; 
+  isUserLoading: boolean;
   userError: Error | null;
 }
 
+// ... other interfaces remain the same
 export interface FirebaseServicesAndUser {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
@@ -36,66 +37,90 @@ export interface UserHookResult {
   userError: Error | null;
 }
 
-// --- React Context ---
+// --- Context ---
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-// --- Provider Component ---
+// --- Provider ---
 export const FirebaseProvider: React.FC<{children: ReactNode}> = ({ children }) => {
-  // Lazily initialize Firebase services ONLY on the client
-  const firebaseApp = useMemo(() => getFirebaseApp(), []);
-  const firestore = useMemo(() => getFirestore(firebaseApp), [firebaseApp]);
-  const auth = useMemo(() => getAuth(firebaseApp), [firebaseApp]);
-  const storage = useMemo(() => getStorage(firebaseApp), [firebaseApp]);
+  // Defer initialization until client-side mount
+  const [services, setServices] = useState<{
+    app: FirebaseApp;
+    firestore: Firestore;
+    auth: Auth;
+    storage: FirebaseStorage;
+  } | null>(null);
 
-  const [userAuthState, setUserAuthState] = useState<{
-    user: User | null;
-    isUserLoading: boolean;
-    userError: Error | null;
-  }>({
-    user: null,
-    isUserLoading: true,
-    userError: null,
+  const [userAuthState, setUserAuthState] = useState<{ user: User | null; isUserLoading: boolean; userError: Error | null; }>({ 
+    user: null, 
+    isUserLoading: true, // Start as true until we can check
+    userError: null 
   });
 
+  // This effect runs ONLY on the client after the component mounts.
+  // This is the key to preventing build-time errors.
   useEffect(() => {
+    const app = getFirebaseApp();
+    setServices({
+      app,
+      firestore: getFirestore(app),
+      auth: getAuth(app),
+      storage: getStorage(app),
+    });
+  }, []); // Empty array ensures this runs only once on mount
+
+  // This effect subscribes to auth changes, but only if the auth service is available.
+  useEffect(() => {
+    if (!services?.auth) {
+      setUserAuthState({ user: null, isUserLoading: false, userError: null });
+      return;
+    }
     const unsubscribe = onAuthStateChanged(
-      auth,
+      services.auth,
       (firebaseUser) => {
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => {
-        console.error("FirebaseProvider: onAuthStateChanged error:", error);
+        console.error("FirebaseProvider auth error:", error);
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
       }
     );
     return () => unsubscribe();
-  }, [auth]);
+  }, [services?.auth]);
 
-  const contextValue = useMemo((): FirebaseContextState => ({
-    areServicesAvailable: true,
-    firebaseApp,
-    firestore,
-    auth,
-    storage,
-    ...userAuthState,
-  }), [firebaseApp, firestore, auth, storage, userAuthState]);
+  // The context value is memoized. It will be in a "loading" state on the server
+  // and during the initial render on the client.
+  const contextValue = useMemo((): FirebaseContextState => {
+    const areServicesAvailable = !!services;
+    return {
+      areServicesAvailable,
+      firebaseApp: services?.app ?? null,
+      firestore: services?.firestore ?? null,
+      auth: services?.auth ?? null,
+      storage: services?.storage ?? null,
+      user: userAuthState.user,
+      isUserLoading: userAuthState.isUserLoading,
+      userError: userAuthState.userError,
+    };
+  }, [services, userAuthState]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
-      <FirebaseErrorListener />
+      {/* The error listener also only renders when services are ready */}
+      {services && <FirebaseErrorListener />}
       {children}
     </FirebaseContext.Provider>
   );
 };
 
-// --- Hooks ---
+// --- Hooks (remain mostly the same) ---
 export const useFirebase = (): FirebaseServicesAndUser => {
   const context = useContext(FirebaseContext);
   if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
+  // This check now correctly handles the initial server/client render state
   if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth || !context.storage) {
-    throw new Error('Firebase core services not available. Check FirebaseProvider setup.');
+    throw new Error('Firebase services not yet available. This may be due to server-side rendering. Ensure you are handling this case appropriately.');
   }
   return {
     firebaseApp: context.firebaseApp,
@@ -138,6 +163,10 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
 }
 
 export const useUser = (): UserHookResult => {
-  const { user, isUserLoading, userError } = useFirebase();
+  const context = useContext(FirebaseContext);
+   if (context === undefined) {
+    throw new Error('useUser must be used within a FirebaseProvider.');
+  }
+  const { user, isUserLoading, userError } = context;
   return { user, isUserLoading, userError };
 };
